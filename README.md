@@ -61,7 +61,7 @@ Re-verify the dice from a session export: `node verify_rolls.mjs export.json`.
 `simTrain` start · `Continue` advance time · `.s` new scenario · `.file <title>` write a report · `.image <what>` / "show me…" · `.end` score, debrief and roll audit · ⚙ settings.
 
 ## About this repo
-This is the source of the simTrain Universal build submitted to the Meta hackathon (Nov 2026), published with a fresh history. Live playtest logs, recordings and internal test-run transcripts are not included.
+This is the source of the simTrain Universal build submitted to the Meta Global AI Developer Hackathon (Nov 2026). The application code matches the build deployed to the live demo on Nov 3, 2026, before the Nov 4 9:00 PM ET deadline. The repository itself was published on Nov 4, after the deadline, with a fresh history. The only edits are: secrets moved out, Cloudflare IDs replaced with placeholders, review-tracker labels in code comments renamed, and one test import path fixed. Live playtest logs, recordings and internal test-run transcripts are not included.
 
 ## License
 MIT. See LICENSE.
