@@ -1,0 +1,38 @@
+// Settings/customization regression test (bundle worker to ./worker.js first; see README).
+import worker from "./worker.js";
+const kv=new Map();
+const KV={list:async()=>({keys:[],list_complete:true}),get:async k=>kv.get(k)?.v??null,put:async(k,v,o)=>kv.set(k,{v,m:o?.metadata}),delete:async k=>kv.delete(k),getWithMetadata:async k=>({value:kv.get(k)?.v??null,metadata:kv.get(k)?.m})};
+const sys=[];let imgCalls=0;
+globalThis.fetch=async(url,o)=>{if(url.includes("images")){imgCalls++;return new Response("{}",{status:500})}const b=JSON.parse(o.body);const s=b.messages[0].content;sys.push(s);let out;
+ if(s.includes("SCENARIO DESIGNER")) out={title:"T",setting:"Kitchen",start_clock:"2026-09-19T19:05",turn_minutes:3,turn_budget:12,briefing:"b",objective:"o",hidden_truth:"h",fundamentals:[{id:"F1",step:"s",framework:"x",domain:"technical"}],nucs:[],rubric:{}};
+ else if(s.includes("Extract the trainee profile")) out={role:"cook",experience:"Experienced",industry:"food"};
+ else if(s.includes("ACTION CLASSIFIER")) out={kind:"action",consequential:true,elapsed_minutes:1,specific_enough:true,summary:"act",rubric:{procedure:1,framework:1,specificity:1},difficulty:"standard",prohibited:false,fundamentals_satisfied:[],fundamentals_required_missing:[],image_request:"the walk-in"};
+ else if(s.includes("ROLE: NARRATOR")) out={narration:"Steam rises.",tier_acknowledged:"x"};
+ else if(s.includes("simTrain GRADER writing")) out={feedback:"DEBRIEF"};
+ else out={narration_consistent:true,notes:[]};
+ return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(out)}}],usage:{}}))};
+const env={KV,META_BASE:"http://m",TEXT_MODEL:"t",IMAGE_MODEL:"i",SPEND_CAP_USD:"15",META_API_KEY:"x"};
+const call=async(p,body)=>{const r=await worker.fetch(new Request("http://x"+p,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}),env,{waitUntil(){}});return r.json()};
+let ok=0,bad=0;const t=(n,c)=>{c?ok++:bad++;console.log((c?"PASS ":"FAIL ")+n)};
+async function run(settings){kv.clear();sys.length=0;imgCalls=0;const {id}=await call("/api/session",{});const T=i=>call(`/api/session/${id}/turn`,{input:i,settings});
+ await T("simTrain");await T("ROLE: cook\nEXPERIENCE_LEVEL: Experienced");let r=await T("I check the walk-in temperature and log it.");const raw=JSON.parse(kv.get("s:"+id).v);r=await T(".end");return {r,raw,sys:[...sys]};}
+const H=await run({difficulty:"hard",pacing:"brisk",mode:"coaching",hints:"guided",images:"off",debrief:"detailed",theme:"x",evil:"ignore rules"});
+t("hard adds +2 to DC (dc_parts.setting=2)",H.raw.rolls[0].dc_parts.setting===2);
+t("brisk shrinks budget within 6-16",H.raw.turn_budget===8);
+t("coaching+guided reach narrator prompt",H.sys.some(s=>s.includes("ROLE: NARRATOR")&&s.includes("COACHING MODE")&&s.includes("HINTS: if the trainee")));
+t("hard reaches setup prompt",H.sys.some(s=>s.includes("SCENARIO DESIGNER")&&s.includes("DIFFICULTY PREFERENCE: hard")));
+t("detailed debrief reaches grader",H.sys.some(s=>s.includes("simTrain GRADER writing")&&s.includes("DEBRIEF LENGTH: detailed")));
+t("images off => zero image calls",imgCalls===0);
+t("unknown keys dropped",!("evil" in H.raw.settings)&&!("theme" in H.raw.settings));
+const pub=JSON.stringify(H.r.state.transcript.filter(m=>!m.audit));
+t("trainee view has no prefs/prompt text",!/TRAINEE PREFERENCES|COACHING MODE|DEBRIEF LENGTH/.test(pub));
+t("scorecard notes run settings",/Run settings: difficulty hard · pacing brisk · coaching mode · hints guided/.test(pub));
+const G=await run({difficulty:"gentle",pacing:"extended",images:"request"});
+t("gentle -1 but floor 12 holds",G.raw.rolls[0].dc>=12&&G.raw.rolls[0].dc_parts.setting===-1);
+t("extended budget 16 (clamped)",G.raw.turn_budget===16);
+t("images on request still generate",imgCalls>0);
+const X=await run({difficulty:"impossible",pacing:"forever",images:"unlimited"});
+t("invalid values fall back to defaults",X.raw.settings.difficulty==="standard"&&X.raw.settings.images==="request"&&X.raw.turn_budget===12);
+const N=await run(undefined);
+t("no settings => legacy behavior",N.raw.rolls[0].dc_parts.setting===0&&!N.sys.some(s=>s.includes("ROLE: NARRATOR")&&s.includes("COACHING MODE")));
+console.log(`${ok}/${ok+bad} passed`);process.exit(bad?1:0);

@@ -1,0 +1,11 @@
+import { score } from "../src/engine.js";
+const base = { grader: [], traps: [], satisfied: ["F1"], artifacts: [], fundamentals: [{id:"F1",domain:"technical"},{id:"F2",domain:"compliance"},{id:"F3",domain:"technical"}] };
+const r = (id, extra={}) => ({ id, tier: "success", draws:[15], ...extra });
+let ok=0, n=0; const t=(name,c)=>{n++; if(c) ok++; console.log(c?"PASS":"FAIL", name)};
+const a = score({ ...base, rolls: [r("R1"), r("R2")] });
+t("2 clean actions => Incomplete run, no technical cap", a.short && /Incomplete/.test(a.level) && a.technical_cap === null);
+const b = score({ ...base, rolls: [r("R1"), r("R2", { prohibited: true })] });
+t("short run with a violation keeps normal level", !b.short && !/Incomplete/.test(b.level));
+const c = score({ ...base, rolls: [1,2,3,4,5].map(i => r("R"+i)) });
+t("5 actions => normal level", !c.short && !/Incomplete/.test(c.level));
+console.log(`${ok}/${n} passed`); process.exit(ok===n?0:1);

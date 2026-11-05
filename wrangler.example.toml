@@ -1,0 +1,28 @@
+# Copy to wrangler.toml and fill in your own values.
+# Secrets are NOT stored here: set them with `npx wrangler secret put META_API_KEY`
+# (and optionally ADMIN_TOKEN, TURNSTILE_SECRET). For local dev, put them in .dev.vars (gitignored).
+name = "simtrain-universal"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+# account_id = "<YOUR_CLOUDFLARE_ACCOUNT_ID>"   # optional; wrangler can infer it from your login
+
+[vars]
+META_BASE = "https://api.meta.ai/v1"
+TEXT_MODEL = "muse-spark-1.3"
+IMAGE_MODEL = "muse-image-1.0"
+SPEND_CAP_USD = "15"   # deployment-wide spend cap in USD
+
+[[kv_namespaces]]
+binding = "KV"
+id = "<YOUR_KV_NAMESPACE_ID>"   # from: npx wrangler kv namespace create SIMTRAIN_KV
+
+# Burst limits per client IP (Workers Rate Limiting binding)
+[[ratelimits]]
+name = "RL_TURN"
+namespace_id = "1001"   # any unique integer in your account
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "RL_SESSION"
+namespace_id = "1002"
+simple = { limit = 4, period = 60 }

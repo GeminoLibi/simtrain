@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>simTrain · Verify the dice</title>
+<style>body{margin:0;background:#0b0f14;color:#dfe7ef;font:15px/1.5 system-ui,sans-serif}main{max-width:860px;margin:auto;padding:20px}h1{color:#3ddc97;margin:.2em 0}a{color:#3ddc97}
+input,textarea,button{font:inherit;background:#121a23;color:#dfe7ef;border:1px solid #2a3a4a;border-radius:8px;padding:8px}textarea{width:100%;box-sizing:border-box;height:110px}button{background:#3ddc97;color:#04130b;font-weight:700;cursor:pointer}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.row input{flex:1;min-width:220px}table{border-collapse:collapse;width:100%;font-size:13px;margin-top:12px}td,th{border-bottom:1px solid #223;padding:5px;text-align:left}
+.ok{color:#3ddc97;font-weight:700}.bad{color:#ff6b6b;font-weight:700}.v{font-size:20px;margin:14px 0;padding:12px;border-radius:10px;background:#121a23}code{word-break:break-all;color:#9fb3c8}.wrap{overflow-x:auto}</style></head>
+<body><main><h1>Verify the dice</h1>
+<p>Every simTrain scenario commits to a secret seed before your first action: its SHA-256 hash is fixed at the start. Each d20 is <code>SHA-256(seed:roll:draw:k)</code> (first 8 hex digits, rejection-sampled, mod 20 + 1). When the scenario ends, the seed is revealed. This page re-derives every roll <b>in your browser</b> (Web Crypto; nothing is sent anywhere except fetching the public export) and checks the server didn't fudge a single die.</p>
+<div class="row"><input id="sid" placeholder="Session id of an ENDED scenario (or open /verify?s=…)"><button onclick="bySid()">Verify session</button></div>
+<p style="margin:4px 0">…or paste an export JSON (the export button in the app):</p><textarea id="js" placeholder='{"seed":"…","seed_commit":"…","rolls":[…]}'></textarea>
+<div class="row"><button onclick="byJson()">Verify pasted export</button><a href="/" style="align-self:center">← back to simTrain</a></div>
+<div id="out"></div></main>
+<script>
+const $=id=>document.getElementById(id);
+const hex=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(x=>x.toString(16).padStart(2,'0')).join('');
+async function d20(seed,i,d){for(let k=0;;k++){const h=await hex(`${seed}:${i}:${d}:${k}`);const n=parseInt(h.slice(0,8),16);if(n<4294967280)return n%20+1}}
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+async function bySid(){const id=$('sid').value.trim();if(!id)return;$('out').innerHTML='Fetching export…';
+ try{const r=await fetch('/api/session/'+encodeURIComponent(id)+'/export');const j=await r.json();if(!j.seed){$('out').innerHTML='<div class="v bad">This scenario hasn\'t ended yet (or the id is wrong). The seed is only revealed at the end — type <code>.end</code> in the scenario first.</div>';return}verify(j)}catch(e){$('out').innerHTML='<div class="v bad">Could not fetch: '+esc(e.message)+'</div>'}}
+function byJson(){try{verify(JSON.parse($('js').value))}catch(e){$('out').innerHTML='<div class="v bad">Not valid JSON: '+esc(e.message)+'</div>'}}
+async function verify(s){
+ const cm=(await hex(String(s.seed)))===s.seed_commit;let all=cm;const rows=[];
+ for(const r of s.rolls||[]){const i=+String(r.id).slice(1);const d=[];for(let k=0;k<(r.draws||[]).length;k++)d.push(await d20(s.seed,i,k));
+  const dm=JSON.stringify(d)===JSON.stringify(r.draws);const nat=r.mode==='advantage'?Math.max(...d):r.mode==='disadvantage'?Math.min(...d):d[0];
+  const nm=nat===r.natural,tm=r.total===r.natural+r.modifier,mm=r.margin===undefined||r.margin===r.total-r.dc;const ok=dm&&nm&&tm&&mm;all=all&&ok;
+  rows.push(`<tr><td>${esc(r.id)}</td><td>${esc(r.action).slice(0,70)}</td><td>${esc(r.mode)}</td><td>${esc((r.draws||[]).join('/'))}</td><td>${d.join('/')}</td><td>${r.natural} ${r.modifier>=0?'+':''}${r.modifier} = ${r.total} vs DC ${r.dc}</td><td>${esc(String(r.tier||'').replace(/_/g,' '))}</td><td class="${ok?'ok':'bad'}">${ok?'✓':'✗ '+[!dm&&'dice',!nm&&'natural',!tm&&'total',!mm&&'margin'].filter(Boolean).join(', ')}</td></tr>`)}
+ $('out').innerHTML=`<div class="v ${all?'ok':'bad'}">${all?'✓ VERIFIED':'✗ MISMATCH'} — ${(s.rolls||[]).length} roll(s)${s.title?' · '+esc(s.title):''}</div>
+ <p>Seed commitment: <span class="${cm?'ok':'bad'}">${cm?'✓ SHA-256(seed) matches the commitment shown at the start':'✗ does not match'}</span><br>Seed <code>${esc(s.seed)}</code><br>Commit <code>${esc(s.seed_commit)}</code></p>
+ <div class="wrap"><table><tr><th>Roll</th><th>Action</th><th>Mode</th><th>Logged d20</th><th>Recomputed</th><th>Math</th><th>Result</th><th>Check</th></tr>${rows.join('')||'<tr><td colspan=8>No consequential rolls in this run.</td></tr>'}</table></div>`}
+const P=new URLSearchParams(location.search),q=P.get('s'),g=P.get('g');if(q){$('sid').value=q;bySid()}else if(g!==null)fetch('/api/gallery').then(r=>r.json()).then(j=>{const x=(j.runs||[])[+g];if(x)verify(x)})
+</script></body></html>

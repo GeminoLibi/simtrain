@@ -1,0 +1,143 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>simTrain Universal</title>
+<script>try{const o=JSON.parse(localStorage.getItem("simtrain_settings")||"{}");if(o.theme)document.documentElement.dataset.theme=o.theme}catch{}</script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<style>.msg table{display:block;max-width:100%;overflow-x:auto}.msg.audit{border-left:3px dashed #b58900;opacity:.9;font-size:.9em}
+:root{--bg:#0b0f14;--pn:#121821;--ln:#1f2a37;--tx:#d7e1ec;--mu:#7d8da1;--ac:#3ddc97;--wa:#ffb347;--er:#ff5d5d;--in:#5aa9ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 ui-sans-serif,system-ui,Segoe UI,Roboto}
+header{display:flex;align-items:center;gap:14px;padding:10px 18px;border-bottom:1px solid var(--ln);background:#0e141c}
+header b{font-family:ui-monospace,monospace;color:var(--ac);letter-spacing:.06em}header .pill{font:12px ui-monospace,monospace;padding:3px 8px;border:1px solid var(--ln);border-radius:99px;color:var(--mu)}
+#dev-pill.on{color:#000;background:var(--wa);border-color:var(--wa)}
+main{display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 52px)}main.dev{grid-template-columns:1fr 340px 420px}
+#chat{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}main{overflow:hidden}#log{flex:1;overflow:auto;padding:18px 22px}
+.msg{max-width:860px;margin:0 0 14px;padding:12px 16px;border-radius:10px;background:var(--pn);border:1px solid var(--ln)}
+.msg.user{margin-left:auto;background:#13263a;border-color:#1e3b5a}.msg.system{background:transparent;border-style:dashed;color:var(--mu);font-size:13px}
+.msg .meta{font:11px ui-monospace,monospace;color:var(--mu);margin-bottom:4px}.msg img{max-width:100%;border-radius:8px;margin-top:8px;border:1px solid var(--ln)}
+.msg pre{background:#070a0e;padding:10px;border-radius:6px;overflow:auto;font-size:13px}.msg code{font-family:ui-monospace,monospace}
+.msg table{border-collapse:collapse}.msg td,.msg th{border:1px solid var(--ln);padding:4px 8px}
+form{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--ln)}textarea{flex:1;resize:none;height:64px;background:#070a0e;color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:10px;font:inherit}
+button{background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:8px 12px;cursor:pointer;font:13px ui-monospace,monospace}button.pri{background:var(--ac);color:#03140c;border:0;font-weight:700}button:disabled{opacity:.5}
+.bar{display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 10px}
+aside{border-left:1px solid var(--ln);overflow:auto;padding:14px;background:#0e141c}aside h3{font:12px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--mu);margin:16px 0 6px}
+.kv{font:13px ui-monospace,monospace}.kv div{display:flex;justify-content:space-between;border-bottom:1px dotted var(--ln);padding:3px 0}.kv span:last-child{color:var(--ac);text-align:right}
+.gal img{width:100%;border-radius:6px;margin-bottom:6px;border:1px solid var(--ln)}
+/*ADMIN*/#devp{display:none}main.dev #devp{display:block}/*/ADMIN*/
+.card{font:12px ui-monospace,monospace;border:1px solid var(--ln);border-radius:8px;padding:8px;margin-bottom:8px;background:var(--pn)}
+.t-critical_failure{color:var(--er)}.t-failure{color:#ff8b6b}.t-friction{color:var(--wa)}.t-success{color:var(--ac)}.t-critical_success{color:var(--in)}
+.pos{color:var(--ac)}.neg{color:var(--er)}.clock{height:8px;background:#070a0e;border-radius:9px;overflow:hidden}.clock i{display:block;height:100%;background:linear-gradient(90deg,var(--ac),var(--wa),var(--er))}
+#busy{display:none;color:var(--wa);font:12px ui-monospace,monospace}#busy.on{display:inline}
+.pform{display:grid;gap:6px}.pform input,.pform select{background:#070a0e;color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:6px}
+@media(max-width:900px){header{flex-wrap:wrap;gap:6px}#title{max-width:58vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}main,main.dev{grid-template-columns:1fr;height:auto}aside{display:block;border-left:0;border-top:1px solid #333;max-height:none}textarea{font-size:16px}button{min-height:44px}.gal img{max-width:100%}}
+#title{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:min(60vw,520px);display:inline-block}
+@media(max-width:600px){#clockp{display:none}header b{font-size:14px}}
+
+/*THEMES*/
+:root{--hd:#0e141c;--in2:#070a0e;--um:#13263a;--ub:#1e3b5a;--pri-tx:#03140c;--fs:15px;--ff:ui-sans-serif,system-ui,Segoe UI,Roboto;--mf:ui-monospace,monospace}
+html[data-theme=night]{--bg:#000;--pn:#0d0303;--ln:#3a0f0f;--tx:#ff6b5b;--mu:#a3433a;--ac:#ff3b2f;--wa:#ff8a3d;--er:#ff2020;--in:#ff7a6b;--hd:#050000;--in2:#000;--um:#1d0606;--ub:#4a1212;--pri-tx:#000}
+html[data-theme=contrast]{--bg:#fff;--pn:#fff;--ln:#000;--tx:#000;--mu:#222;--ac:#0040c0;--wa:#8a4b00;--er:#b00000;--in:#0040c0;--hd:#fff;--in2:#fff;--um:#e8f0ff;--ub:#000;--pri-tx:#fff;--ff:Atkinson Hyperlegible,Verdana,system-ui,sans-serif}
+html[data-theme=contrast] .msg,html[data-theme=contrast] button,html[data-theme=contrast] textarea{border-width:2px}
+html[data-theme=contrast] a{text-decoration:underline}
+html[data-theme=field]{--bg:#e9e1c8;--pn:#f6f0dc;--ln:#9c8f66;--tx:#2b2615;--mu:#6b6142;--ac:#4b5d23;--wa:#9a5b00;--er:#9b1c1c;--in:#2f4d7a;--hd:#d8cda9;--in2:#fffbea;--um:#e3dcc0;--ub:#9c8f66;--pri-tx:#f6f0dc;--ff:Georgia,'Times New Roman',serif;--mf:'Courier New',Courier,monospace}
+html[data-theme=terminal]{--bg:#020a02;--pn:#031203;--ln:#0f3d0f;--tx:#5cff5c;--mu:#2fa02f;--ac:#7dff7d;--wa:#d6ff3d;--er:#ff5d5d;--in:#9dffcf;--hd:#010601;--in2:#000;--um:#062206;--ub:#145214;--pri-tx:#001400;--ff:ui-monospace,'Courier New',monospace;--mf:ui-monospace,'Courier New',monospace}
+html[data-theme=terminal] body{text-shadow:0 0 3px rgba(92,255,92,.35)}
+html[data-theme=terminal] .msg img,html[data-theme=night] .msg img{filter:saturate(.7)}
+html[data-theme=night] .msg img{filter:sepia(1) hue-rotate(-30deg) saturate(2) brightness(.8)}
+body{font-size:var(--fs)!important;font-family:var(--ff)!important}
+header,aside{background:var(--hd)!important}textarea,.pform input,.pform select,.msg pre,.clock{background:var(--in2)!important}
+.msg.user{background:var(--um)!important;border-color:var(--ub)!important}button.pri{color:var(--pri-tx)!important}
+header b,.kv,.card,button,.msg .meta,aside h3{font-family:var(--mf)!important}a{color:var(--in)}
+#setb{font-size:16px}
+#setp{position:fixed;top:0;right:0;bottom:0;width:min(380px,100vw);background:var(--pn);border-left:1px solid var(--ln);z-index:50;overflow:auto;padding:16px 18px 40px;transform:translateX(105%);transition:transform .22s ease;box-shadow:-8px 0 30px rgba(0,0,0,.35)}
+#setp.open{transform:none}#setv{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:49;display:none}#setv.open{display:block}
+#setp h2{font:700 14px var(--mf);letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px;color:var(--ac)}
+#setp h4{font:12px var(--mf);text-transform:uppercase;letter-spacing:.1em;color:var(--mu);margin:16px 0 6px}
+#setp .seg{display:flex;flex-wrap:wrap;gap:6px}#setp .seg button{flex:1 1 auto;min-height:40px}#setp .seg button[aria-pressed=true]{background:var(--ac);color:var(--pri-tx);border-color:var(--ac);font-weight:700}
+#setp .hint{font-size:12px;color:var(--mu);margin:4px 0 0;line-height:1.35}
+#setp .sw{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}#setp .sw button{height:54px;padding:4px;font-size:11px;line-height:1.1;border-width:2px}
+#setp .sw button[aria-pressed=true]{outline:3px solid var(--ac);outline-offset:1px}
+html.rm *,html.rm *::before,html.rm *::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+#log{scroll-behavior:smooth}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+@media(max-width:600px){#setp .sw{grid-template-columns:repeat(3,1fr)}}
+/*/THEMES*/
+</style></head><body>
+<header><b>simTrain&nbsp;UNIVERSAL</b><span class="pill" id="title">no scenario</span><span class="pill" id="clockp">--</span><!--ADMIN--><span class="pill" id="dev-pill">dev off</span><!--/ADMIN--><span id="busy">● <span id="stx">working…</span> <span id="el"></span></span><span style="flex:1"></span><button onclick="newSession()">new session</button><button id="setb" onclick="openSet(1)" aria-label="Settings" title="Themes &amp; advanced settings">⚙</button></header><div id="setv" onclick="openSet(0)"></div><div id="setp" role="dialog" aria-label="Settings" aria-modal="true"><div style="display:flex;align-items:center"><h2>Settings</h2><span style="flex:1"></span><button onclick="openSet(0)" aria-label="Close settings">✕</button></div>
+<p class="hint">Saved on this device. Difficulty and pacing apply when the next scenario starts; the rest apply on your next message.</p>
+<h4>Theme</h4><div class="sw" id="sw-theme"></div>
+<h4>Text size</h4><div class="seg" data-k="text"></div>
+<h4>Motion</h4><div class="seg" data-k="motion"></div>
+<h4>Difficulty</h4><div class="seg" data-k="difficulty"></div><p class="hint">How demanding the situation and the people in it are. Safety floors and scoring rules don't change.</p>
+<h4>Pacing / scenario length</h4><div class="seg" data-k="pacing"></div><p class="hint">Brisk = shorter scenes and fewer actions to the climax. Extended = more room and fuller narration.</p>
+<h4>Mode</h4><div class="seg" data-k="mode"></div><p class="hint">Realism: the world just reacts. Coaching: a seasoned colleague occasionally says what a pro would weigh, in character.</p>
+<h4>Hints</h4><div class="seg" data-k="hints"></div>
+<h4>Images</h4><div class="seg" data-k="images"></div><p class="hint">Per-session image limit still applies.</p>
+<h4>Debrief detail</h4><div class="seg" data-k="debrief"></div>
+<p style="margin-top:18px"><button onclick="resetSet()">Reset to defaults</button></p></div>
+<main id="main">
+<section id="chat"><div id="endban" role="status" style="display:none;margin:8px 12px 0;padding:10px 12px;border-radius:8px;border:1px solid #c0392b;background:#2a1212;color:#ffd7d2;font-size:14px;line-height:1.35"></div><div id="log"></div>
+<div class="bar"><button id="contb" onclick="send('Continue')">Continue</button><button onclick="send('.s')">.s new scenario</button><!--ADMIN--><button onclick="send('.mark-dev')">.mark-dev</button><!--/ADMIN--><button onclick="newFile()">📝 new file</button><button onclick="imgPrompt()">🖼 image</button><button onclick="send('.end')">.end &amp; score</button><button onclick="exportS()">export log</button></div>
+<div id="steps" style="padding:0 18px;font:12px ui-monospace,monospace;color:var(--wa)"></div>
+<form onsubmit="event.preventDefault();send(q.value)"><textarea id="q" placeholder='Type simTrain to begin. Actions in full sentences; dialogue in "quotes".'></textarea><button class="pri" id="go">Send</button></form></section>
+<aside><h3>Profile</h3><div id="prof" class="kv"></div>
+<div id="pf" class="pform" style="display:none"><input id="pi" placeholder="Workplace (optional, e.g. Wendy's, fire dept)"><input id="pr" placeholder="Your job (e.g. shift manager)"><select id="pe"><option value="New">New — learning the basics</option><option value="Experienced" selected>Experienced — work on my own</option><option value="Expert">Expert — train others / hard cases</option></select><input id="pfo" placeholder="What to practice (optional)"><button onclick="sendProfile()">Start scenario</button></div>
+<h3>Mission</h3><div id="obj" style="font-size:13px;color:var(--mu)">—</div><h3>Compliance</h3><div id="comp" class="kv"></div><div id="sth" style="display:none"><h3 id="stt">State</h3><div id="stv" class="kv"></div></div>
+<h3>Files</h3><div id="files" style="font-size:13px"></div><h3>Visuals</h3><div id="gal" class="gal"></div><h3>Session</h3><div id="sess" class="kv"></div></aside>
+<!--ADMIN--><aside id="devp"><h3>Friction clock</h3><div class="clock"><i id="fc"></i></div><div id="seed" style="font:11px ui-monospace,monospace;color:var(--mu);margin-top:6px"></div>
+<h3>Roll log (code-resolved)</h3><div id="rolls"></div><h3>Trap ledger</h3><div id="traps"></div><h3>Grader notes</h3><div id="grader"></div></aside><!--/ADMIN-->
+</main>
+<script>function SIDKEY(){const q=new URLSearchParams(location.search).get('builder');return (q!==null?q==='1':localStorage.getItem('simtrain_builder')==='1')?'simtrain_sid_builder':'simtrain_sid'}
+/*ADMIN*/const ADM=new URLSearchParams(location.search).get('admin')||'';const _f=window.fetch;window.fetch=(u,o={})=>_f(u,{...o,headers:{...(o.headers||{}),'x-simtrain-admin':ADM}});/*/ADMIN*/
+const QS=()=>/*ADMIN*/ADM?'&admin='+encodeURIComponent(ADM):/*/ADMIN*/'';
+let SID=new URLSearchParams(location.search).get('s')||localStorage.getItem(SIDKEY()),S=null;const $=id=>document.getElementById(id);
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const md=t=>DOMPurify.sanitize(marked.parse(t||''));
+async function newSession(){const r=await fetch('/api/session'+(BUILDER?'?builder=1':''),{method:'POST'}).then(r=>r.json());if(!r.id){alert(r.error||'Unable to start a session');return}SID=r.id;localStorage.setItem(SIDKEY(),SID);render(r.state)}
+async function load(){if(!SID)return newSession();const r=await fetch('/api/session/'+SID);if(!r.ok)return newSession();render((await r.json()).state)}
+async function send(t){t=(t||'').trim();if(!t)return;$('q').value='';$('go').disabled=true;$('busy').classList.add('on');$('stx').textContent='Sending…';
+ S&&S.transcript.push({who:'user',text:t});render(S);
+ const t0=Date.now();const tick=setInterval(()=>{$('el').textContent=((Date.now()-t0)/1000|0)+'s'},500);
+ try{const r=await fetch('/api/session/'+SID+'/turn?stream=1',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({input:t,settings:engineSettings()})});
+  if(!r.ok){const e=await r.json().catch(()=>({}));if(e.state){render(e.state)}else{alert(e.error||('Error '+r.status))}throw 0}const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
+  for(;;){const {value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+   while((i=buf.indexOf('\n'))>=0){const line=buf.slice(0,i);buf=buf.slice(i+1);if(!line)continue;const o=JSON.parse(line);
+    if(o.status){$('stx').textContent=o.status;$('steps').innerHTML+=`<div>✓ ${o.status}</div>`}if(o.state)render(o.state)}}
+ }catch(e){if(e)alert(e)}clearInterval(tick);$('steps').innerHTML='';
+ $('go').disabled=false;$('busy').classList.remove('on');gateC()}
+function gateC(){const b=$('contb');const ended=S&&S.phase==='ended';if(b)b.disabled=!!(S&&(S.can_continue===false));const e=$('endban');if(e){e.style.display=ended?'block':'none';e.innerHTML=ended?(S.ended_egregious?'<b>🛑 Scenario ended</b> — ended early after a third egregiously wrong action. Your debrief is below. Type <b>.s</b> for a new scenario.':'<b>Scenario ended.</b> Your debrief is below. Type <b>.s</b> for a new scenario.'):''}if(S&&(ended||S.phase==='play'))$('q').placeholder=ended?'Scenario ended — type .s for a new scenario':(S&&S.egregious?`Warnings: ${S.egregious} of 2 used. `:'')+'Actions in full sentences; dialogue in "quotes".'}
+function imgPrompt(){const w=prompt('What should the engine show? (scene, evidence photo, instrument panel, document…)');if(w)send('.image '+w)}
+function sendProfile(){const t=`INDUSTRY: ${$('pi').value}\nROLE: ${$('pr').value}\nEXPERIENCE_LEVEL: ${$('pe').value}\nSCENARIO_FOCUS: ${$('pfo').value}`;['pi','pr','pfo'].forEach(i=>$(i).value='');send(t)}
+async function exportS(){const r=await fetch('/api/session/'+SID+'/export?x=1'+QS());const b=new Blob([JSON.stringify(await r.json(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='simtrain-'+SID.slice(0,8)+'.json';document.body.appendChild(a);a.click();a.remove()}
+// Builder toggle: cost/model-call counters are hidden unless ?builder=1 (remembered) — trainees never see them.
+const BUILDER=(()=>{const q=new URLSearchParams(location.search).get('builder');if(q!==null)localStorage.setItem('simtrain_builder',q==='1'?'1':'');return !!localStorage.getItem('simtrain_builder')})();
+function newFile(){const t=prompt('File title (e.g. Search warrant affidavit, ICS-201, Chart note)');if(!t)return;const b=prompt('Paste or type the document text');if(b)send('.file '+t+'\n'+b)}
+const fu=(id,dl)=>'/api/session/'+SID+'/files/'+id+'?x=1'+(dl?'&dl=1':'')+QS();
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send($('q').value)}});
+function render(s){S=s;setTimeout(gateC,0);const L=$('log');L.innerHTML=s.transcript.map(m=>`<div class="msg ${m.who}${m.audit?' audit':''}"><div class="meta">${m.audit?'BACKSTAGE AUDIT · ':''}${m.who.toUpperCase()}${m.clock?' · '+m.clock:''}/*ADMIN*/${s.dev&&m.roll?' · '+m.roll:''}/*/ADMIN*/</div>${md(m.text)}${m.image?`<img src="${m.image}" loading="lazy">`:''}</div>`).join('');L.scrollTop=L.scrollHeight;
+ /*ADMIN*/$('main').classList.toggle('dev',!!s.dev);$('dev-pill').textContent=s.dev?'dev ON':'dev off';$('dev-pill').classList.toggle('on',!!s.dev);/*/ADMIN*/
+ $('comp').innerHTML=s.compliance==null?'<span style="color:var(--mu)">—</span>':`<div><span>live score</span><span>${s.compliance}/25</span></div>`;const se=Object.entries(s.sim_state||{});$('sth').style.display=se.length?'block':'none';$('stt').textContent=s.state_title||'State';$('stv').innerHTML=se.map(([k,v])=>`<div><span>${esc(k.replace(/_/g,' '))}</span><span>${esc(v)}</span></div>`).join('');
+ $('title').textContent=s.title||'no scenario';$('clockp').textContent=s.sim_clock||'--';$('obj').textContent=s.objective||'—';
+ const p=s.profile||{};$('prof').innerHTML=['industry','role','experience','focus'].map(k=>`<div><span>${k}</span><span>${esc(p[k]||'—')}</span></div>`).join('');$('pf').style.display=s.phase==='profile'?'grid':'none';
+ $('gal').innerHTML=(s.images||[]).map(i=>`<a href="${i.url}" target="_blank"><img src="${i.url}" title="${esc(i.prompt)}"></a>`).join('')||'<span style="color:var(--mu);font-size:13px">ask “show me…” or use 🖼</span>';
+ $('sess').innerHTML=`<div><span>phase</span><span>${esc(s.phase)}</span></div><div><span>turn</span><span>${s.turn}</span></div>`+(BUILDER?`<div><span>model calls</span><span>${s.cost.calls}</span></div><div><span>est. cost</span><span>$${s.cost.usd.toFixed(3)}</span></div>`:'')+(s.final?`<div><span>score</span><span>${s.final.total}/100 ${s.final.level}</span></div>`:'');
+ $('files').innerHTML=(s.artifacts||[]).map(a=>`<div style="border-bottom:1px dotted var(--ln);padding:3px 0"><a href="${fu(a.id)}" target="_blank" style="color:var(--in)">${a.id}</a> ${esc(a.title)} <span style="color:var(--mu)">${a.source==='trainee'?'(yours)':''}</span> <a href="${fu(a.id,1)}" style="color:var(--mu)">⬇</a></div>`).join('')||'<span style="color:var(--mu)">none yet</span>';
+ /*ADMIN*/if(!s.dev)return;$('fc').style.width=((s.friction_clock||0)/12*100)+'%';$('seed').textContent=`clock ${s.friction_clock}/12 · escalation step ${s.escalation} · seed commit ${(s.seed_commit||'').slice(0,16)}…${s.seed_revealed?' · seed '+s.seed_revealed:''}`;
+ $('rolls').innerHTML=(s.rolls||[]).slice().reverse().map(r=>`<div class="card"><b>${r.id}</b> <span class="t-${r.tier}">${r.tier.toUpperCase()}</span> · ${r.action}<br>d20 ${r.mode!=='normal'?r.mode+' ['+r.draws.join(',')+']→':''}${r.natural} ${r.modifier>=0?'+':''}${r.modifier} = <b>${r.total}</b> vs DC ${r.dc} (margin ${r.margin})<br>DC ${r.difficulty} ${r.dc_parts.base}${r.dc_parts.experience?(r.dc_parts.experience>0?'+':'')+r.dc_parts.experience:''}${r.dc_parts.pressure?'+'+r.dc_parts.pressure+' pressure':''} · mod P${r.mod_parts.procedure}/F${r.mod_parts.framework}/S${r.mod_parts.specificity}${r.mod_parts.prereq_penalty?' '+r.mod_parts.prereq_penalty+' prereq':''}${r.mastery_floor?' · mastery floor':''}${r.traps_triggered.length?'<br>⚠ traps: '+r.traps_triggered.join(','):''}<br>narration check: ${r.validation?(r.validation.retried?'re-prompted':'ok'):'-'} · hash ${r.draw_hashes[0]}</div>`).join('')||'<i>none yet</i>';
+ $('traps').innerHTML=(s.fundamentals||[]).map(f=>{const t=(s.traps||[]).find(x=>x.id===f.id),ok=(s.satisfied||[]).includes(f.id);return `<div class="card">${ok?'✅':t?'⚠️':'·'} <b>${f.id}</b> ${f.step} <span style="color:var(--mu)">(${f.framework}; ${f.domain})</span>${t?`<br>missed @turn ${t.first_turn}, bit ×${t.bites}${t.cured?' · cured':''}`:''}</div>`}).join('');
+ $('grader').innerHTML=(s.grader||[]).slice().reverse().map(g=>`<div class="card"><b>${g.id}</b> ${g.ts.slice(11,19)}Z · turn ${g.turn}${g.roll?' · '+g.roll:''} · ${g.domain} <b class="${g.delta>=0?'pos':'neg'}">${g.delta>=0?'+':''}${g.delta}</b><br>“${g.evidence}”<br><span style="color:var(--mu)">${g.rationale}</span></div>`).join('')||'<i>none yet</i>'/*/ADMIN*/}
+
+/*SETTINGS*/
+const SET_OPTS={theme:[['default','Ops (default)'],['night','Night ops'],['contrast','High contrast'],['field','Field manual'],['terminal','Terminal']],text:[['s','S'],['m','M'],['l','L'],['xl','XL']],motion:[['full','Full'],['reduced','Reduced']],difficulty:[['gentle','Gentle'],['standard','Standard'],['hard','Hard']],pacing:[['brisk','Brisk'],['standard','Standard'],['extended','Extended']],mode:[['realism','Realism'],['coaching','Coaching']],hints:[['off','Off'],['light','Light'],['guided','Guided']],images:[['off','Off'],['opening','Opening only'],['request','On request'],['frequent','Frequent']],debrief:[['brief','Brief'],['standard','Standard'],['detailed','Detailed']]};
+const SET_DEF={theme:'default',text:'m',motion:matchMedia('(prefers-reduced-motion: reduce)').matches?'reduced':'full',difficulty:'standard',pacing:'standard',mode:'realism',hints:'light',images:'request',debrief:'standard'};
+let SET=(()=>{try{const o=JSON.parse(localStorage.getItem('simtrain_settings')||'{}');const r={...SET_DEF};for(const k in SET_OPTS)if(SET_OPTS[k].some(([v])=>v===o[k]))r[k]=o[k];return r}catch{return {...SET_DEF}}})();
+const SW={default:['#0b0f14','#3ddc97'],night:['#000','#ff3b2f'],contrast:['#fff','#000'],field:['#e9e1c8','#4b5d23'],terminal:['#020a02','#5cff5c']};
+function applySet(){const h=document.documentElement;h.dataset.theme=SET.theme;h.style.setProperty('--fs',{s:'13px',m:'15px',l:'17px',xl:'19px'}[SET.text]);h.classList.toggle('rm',SET.motion==='reduced');localStorage.setItem('simtrain_settings',JSON.stringify(SET));
+ const sw=document.getElementById('sw-theme');if(sw)sw.innerHTML=SET_OPTS.theme.map(([v,l])=>`<button aria-pressed="${SET.theme===v}" onclick="setK('theme','${v}')" style="background:${SW[v][0]};color:${SW[v][1]};border-color:${SW[v][1]}">${l}</button>`).join('');
+ document.querySelectorAll('#setp .seg').forEach(d=>{const k=d.dataset.k;d.innerHTML=SET_OPTS[k].map(([v,l])=>`<button aria-pressed="${SET[k]===v}" onclick="setK('${k}','${v}')">${l}</button>`).join('')})}
+function setK(k,v){SET[k]=v;applySet()}function resetSet(){SET={...SET_DEF};applySet()}
+function openSet(o){document.getElementById('setp').classList.toggle('open',!!o);document.getElementById('setv').classList.toggle('open',!!o);if(o)document.querySelector('#setp button').focus()}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')openSet(0)});
+const engineSettings=()=>({difficulty:SET.difficulty,pacing:SET.pacing,mode:SET.mode,hints:SET.hints,images:SET.images,debrief:SET.debrief});
+applySet();
+/*/SETTINGS*/
+load();
+</script></body></html>
