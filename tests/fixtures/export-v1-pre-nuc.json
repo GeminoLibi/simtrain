@@ -1,0 +1,302 @@
+{
+ "title": "Mock shift #1: the double-booked delivery",
+ "profile": {
+  "industry": "warehouse shift lead",
+  "role": "warehouse shift lead",
+  "experience": "Experienced",
+  "focus": "a realistic, common challenging situation for this job (designer chooses)"
+ },
+ "transcript": [
+  {
+   "who": "system",
+   "text": "Type **simTrain** to activate.",
+   "turn": 0,
+   "ts": "2026-11-09T17:21:12.764Z",
+   "clock": null
+  },
+  {
+   "who": "engine",
+   "text": "**simTrain Universal Engine — online.**\n\nTell me about your job in your own words — e.g. *\"I manage a Wendy's\"*, *\"I'm a firefighter, 3 years in\"*, *\"ER doctor\"*, *\"I work hotel front desk\"*. Any job works.\n- **Job / role** (required)\n- **Experience**: *New* (learning the basics), *Experienced* (do it on your own), or *Expert* (train others / handle the hard cases)\n- **What to practice** (optional, e.g. an angry customer, a kitchen fire, a short-staffed shift) — leave blank and I'll pick something realistic.\n\n**Interaction briefing**\n- Say what you do in plain, complete sentences (what, to whom, how).\n- Use \"quotation marks\" for dialogue or radio/comm traffic.\n- `Continue` advances time · `.s` new scenario · `.end` ends and scores\n- Files panel: records, logs and images you receive are saved as files (A-001…). Refer to them by ID or title (\"review A-003\"). Write your own report/affidavit/form with `.file <title>` on the first line and the text below it (or the **new file** button). · `.image <what>` or \"show me…\" renders an image.",
+   "turn": 0,
+   "ts": "2026-11-09T17:21:12.773Z",
+   "clock": null
+  },
+  {
+   "who": "user",
+   "text": "ROLE: warehouse shift lead\nEXPERIENCE_LEVEL: Experienced",
+   "turn": 1,
+   "ts": "2026-11-09T17:21:12.774Z",
+   "clock": null
+  },
+  {
+   "who": "engine",
+   "text": "## Mock shift #1: the double-booked delivery\n*Demo site (offline mock mode), warehouse shift lead* — **Mon Nov 9, 2026 09:00 ET**\n\nYou are working as a warehouse shift lead (offline demo: replies come from a canned mock model, not an AI). Two deliveries were booked for the same slot, a customer is waiting at the counter asking for a manager, and your supervisor is off-site and reachable only by phone. Three tasks are open on the board. What do you do first?\n\n**Objective:** Resolve the double booking, keep the customer informed, and log the incident before shift end.\n\n📋 **State:** open tasks: 3 · staff on shift: 4 · customer waiting: yes · supervisor: off-site · log updated: no",
+   "turn": 1,
+   "ts": "2026-11-09T17:21:12.776Z",
+   "clock": "Mon Nov 9, 2026 09:00 ET"
+  },
+  {
+   "who": "engine",
+   "text": "## Seed commitment\nRoll seed commitment (SHA-256): `a3e31a35a3b059aaca59230b1a96e55a851464a1e354d292b3d2f98e4a05a9a2`. The seed is revealed in the debrief at `.end` so every roll can be re-derived.",
+   "turn": 1,
+   "ts": "2026-11-09T17:21:12.776Z",
+   "clock": "Mon Nov 9, 2026 09:00 ET",
+   "audit": true
+  },
+  {
+   "who": "user",
+   "text": "I walk over to Dana, apologize for the wait and tell her I am checking both bookings against the schedule now.",
+   "turn": 2,
+   "ts": "2026-11-09T17:21:12.778Z",
+   "clock": "Mon Nov 9, 2026 09:00 ET"
+  },
+  {
+   "who": "engine",
+   "text": "*(mock model)* It works. The people involved respond the way you hoped.\n\n---\n⚖️ Compliance **8/25** (±0) · 🕒 Mon Nov 9, 2026 09:06 ET\n\n📋 **State changed:** open tasks: 2",
+   "turn": 2,
+   "ts": "2026-11-09T17:21:12.781Z",
+   "clock": "Mon Nov 9, 2026 09:06 ET"
+  },
+  {
+   "who": "engine",
+   "text": "🎲 **R1** · I walk over to Dana, apologize for the wait and tell her I am checking both book · DC 12 · d20 12 + 3 = **15** · **SUCCESS**",
+   "turn": 2,
+   "ts": "2026-11-09T17:21:12.781Z",
+   "clock": "Mon Nov 9, 2026 09:06 ET",
+   "audit": true
+  },
+  {
+   "who": "user",
+   "text": "I call the vendor, confirm the second booking is a duplicate and ask them to cancel it.",
+   "turn": 3,
+   "ts": "2026-11-09T17:21:12.782Z",
+   "clock": "Mon Nov 9, 2026 09:06 ET"
+  },
+  {
+   "who": "engine",
+   "text": "*(mock model)* It works. The people involved respond the way you hoped.\n\n---\n⚖️ Compliance **8/25** (±0) · 🕒 Mon Nov 9, 2026 09:12 ET",
+   "turn": 3,
+   "ts": "2026-11-09T17:21:12.784Z",
+   "clock": "Mon Nov 9, 2026 09:12 ET"
+  },
+  {
+   "who": "engine",
+   "text": "🎲 **R2** · I call the vendor, confirm the second booking is a duplicate and ask them to can · DC 12 · d20 13 + 3 = **16** · **SUCCESS**",
+   "turn": 3,
+   "ts": "2026-11-09T17:21:12.784Z",
+   "clock": "Mon Nov 9, 2026 09:12 ET",
+   "audit": true
+  },
+  {
+   "who": "user",
+   "text": "I log the incident in the shift log with both booking numbers and the vendor reference.",
+   "turn": 4,
+   "ts": "2026-11-09T17:21:12.784Z",
+   "clock": "Mon Nov 9, 2026 09:12 ET"
+  },
+  {
+   "who": "engine",
+   "text": "*(mock model)* It works. The people involved respond the way you hoped.\n\n---\n⚖️ Compliance **10/25** (+2) · 🕒 Mon Nov 9, 2026 09:17 ET\n\n📋 **State changed:** log updated: yes",
+   "turn": 4,
+   "ts": "2026-11-09T17:21:12.786Z",
+   "clock": "Mon Nov 9, 2026 09:17 ET"
+  },
+  {
+   "who": "engine",
+   "text": "🎲 **R3** · I log the incident in the shift log with both booking numbers and the vendor ref · DC 12 · d20 16 + 3 = **19** · **SUCCESS**",
+   "turn": 4,
+   "ts": "2026-11-09T17:21:12.786Z",
+   "clock": "Mon Nov 9, 2026 09:17 ET",
+   "audit": true
+  },
+  {
+   "who": "user",
+   "text": ".end",
+   "turn": 5,
+   "ts": "2026-11-09T17:21:12.786Z",
+   "clock": "Mon Nov 9, 2026 09:17 ET"
+  },
+  {
+   "who": "engine",
+   "text": "## Scorecard — 43/100 · Incomplete run (partial score)\n| Domain | What it means for your job | Score |\n|---|---|---|\n| Compliance & Framework Adherence | follow site SOP and logging rules | 10/25 |\n| Technical Execution & Methodology | verify records before changing them | 10/25 |\n| Communication & Subject Mgmt | keep the customer and team informed | 13/25 |\n| Critical Thinking & Problem Solving | prioritize under time pressure | 10/25 |\n\n*This run ended after 3 consequential actions, so it is scored as an incomplete run: the points reflect only what you reached, not a verdict on your skill. Play through to the objective for a full rating.*\n\n**Missed (a required step was skipped before an action that depended on it):** none\n\n**Skipped at first, done later (penalty reduced):** none\n\n**Not reached yet (the run ended before these; not counted as missed):** none\n\n**Rule violations (the improper action was stopped):** none\n\n*Grading covers what you wrote and did. Details the scene added, and things you prepared but did not send, are not credited as done.*\n\n_Run settings: difficulty standard · pacing standard · realism mode · hints light._\n\n### Debrief (mock model)\nThis debrief was written by the offline mock, not an AI. The scorecard and roll audit above are real: they were computed in code from this session's seeded rolls and  ledger.\n\nSet `META_API_KEY` and remove `MOCK_LLM` for real scenarios and feedback.",
+   "turn": 5,
+   "ts": "2026-11-09T17:21:12.787Z",
+   "clock": "Mon Nov 9, 2026 09:17 ET"
+  },
+  {
+   "who": "engine",
+   "text": "## Frameworks this scenario was built around\n- customer-service standard\n- site SOP\n- vendor policy",
+   "turn": 5,
+   "ts": "2026-11-09T17:21:12.787Z",
+   "clock": "Mon Nov 9, 2026 09:17 ET"
+  },
+  {
+   "who": "engine",
+   "text": "## Grader vs tracker\n**What was checked:**\n- Rules: the grader compared the narration with the Shift state tracker and 2 rule(s) on 3 story turn(s). No rule mismatches found.\n- Clock: code compared every time stated in the narration with the engine clock on 3 turn(s). No mismatches found.\n- Freshness: code flagged time-sensitive fields not updated for 60+ in-scene minutes. None stale at the end.\n- Not checked: 0 turn(s) that were images, files, refused out-of-scenario requests or clarification pauses (the tracker is not updated on those).",
+   "turn": 5,
+   "ts": "2026-11-09T17:21:12.787Z",
+   "clock": "Mon Nov 9, 2026 09:17 ET",
+   "audit": true
+  },
+  {
+   "who": "engine",
+   "text": "## Decision vs luck\n**Every action, tagged or not:**\n- R1 I walk over to Dana, apologize for the wait and tell her I am checking: No tag: a sound decision with a good result; there is nothing to separate.\n- R2 I call the vendor, confirm the second booking is a duplicate and ask t: No tag: a sound decision with a good result; there is nothing to separate.\n- R3 I log the incident in the shift log with both booking numbers and the : No tag: a sound decision with a good result; there is nothing to separate.",
+   "turn": 5,
+   "ts": "2026-11-09T17:21:12.787Z",
+   "clock": "Mon Nov 9, 2026 09:17 ET",
+   "audit": true
+  },
+  {
+   "who": "engine",
+   "text": "## Roll audit — seed revealed\nSeed: `ef61f26626434024b557dd1294dae1e0`\nCommitment shown at start: `a3e31a35a3b059aaca59230b1a96e55a851464a1e354d292b3d2f98e4a05a9a2` (SHA-256 of the seed)\n\n| Roll | Action | DC | d20 | Mod | Total | Result |\n|---|---|---|---|---|---|---|\n| R1 | I walk over to Dana, apologize for the wait and tell her I a | 12 | 12 | +3 | 15 | success |\n| R2 | I call the vendor, confirm the second booking is a duplicate | 12 | 13 | +3 | 16 | success |\n| R3 | I log the incident in the shift log with both booking number | 12 | 16 | +3 | 19 | success |\n\nMastery floor: when procedure is 3, framework ≥2, specificity 3 and no prerequisite was skipped, a below-DC roll becomes Success; a natural 1 becomes Friction instead of Critical Failure.\n\nVerify every die yourself: [open the verifier](http://x/verify?s=cc2e7dff-297a-4aba-bcc0-df21856baaac) (runs in your browser), or export the log and run `node verify_rolls.mjs export.json`.",
+   "turn": 5,
+   "ts": "2026-11-09T17:21:12.788Z",
+   "clock": "Mon Nov 9, 2026 09:17 ET",
+   "audit": true
+  }
+ ],
+ "artifacts": [],
+ "scorecard": {
+  "total": 43,
+  "level": "Incomplete run (partial score)",
+  "domains": {
+   "compliance": 10,
+   "technical": 10,
+   "communication": 13,
+   "critical": 10
+  },
+  "feedback": "### Debrief (mock model)\nThis debrief was written by the offline mock, not an AI. The scorecard and roll audit above are real: they were computed in code from this session's seeded rolls and  ledger.\n\nSet `META_API_KEY` and remove `MOCK_LLM` for real scenarios and feedback.",
+  "seed": "ef61f26626434024b557dd1294dae1e0",
+  "seed_commit": "a3e31a35a3b059aaca59230b1a96e55a851464a1e354d292b3d2f98e4a05a9a2"
+ },
+ "seed": "ef61f26626434024b557dd1294dae1e0",
+ "seed_commit": "a3e31a35a3b059aaca59230b1a96e55a851464a1e354d292b3d2f98e4a05a9a2",
+ "rolls": [
+  {
+   "id": "R1",
+   "turn": 2,
+   "ts": "2026-11-09T17:21:12.780Z",
+   "action": "I walk over to Dana, apologize for the wait and tell her I am checking both book",
+   "difficulty": "standard",
+   "dc": 12,
+   "dc_parts": {
+    "base": 12,
+    "experience": 0,
+    "pressure": 0,
+    "setting": 0
+   },
+   "mode": "normal",
+   "draws": [
+    12
+   ],
+   "draw_hashes": [
+    "76754ddb91c1410c"
+   ],
+   "natural": 12,
+   "modifier": 3,
+   "mod_parts": {
+    "procedure": 2,
+    "framework": 2,
+    "specificity": 2,
+    "skill": 3,
+    "prereq_penalty": 0
+   },
+   "total": 15,
+   "margin": 3,
+   "mastery_floor": false,
+   "tier_before_floor": "success",
+   "floor_applied": false,
+   "prohibited": false,
+   "rule_violated": null,
+   "tier_before_cap": "success",
+   "tier": "success",
+   "traps_triggered": [],
+   "friction_clock": 0,
+   "sim_minutes": 6
+  },
+  {
+   "id": "R2",
+   "turn": 3,
+   "ts": "2026-11-09T17:21:12.783Z",
+   "action": "I call the vendor, confirm the second booking is a duplicate and ask them to can",
+   "difficulty": "standard",
+   "dc": 12,
+   "dc_parts": {
+    "base": 12,
+    "experience": 0,
+    "pressure": 0,
+    "setting": 0
+   },
+   "mode": "normal",
+   "draws": [
+    13
+   ],
+   "draw_hashes": [
+    "b6a137e096753611"
+   ],
+   "natural": 13,
+   "modifier": 3,
+   "mod_parts": {
+    "procedure": 2,
+    "framework": 2,
+    "specificity": 2,
+    "skill": 3,
+    "prereq_penalty": 0
+   },
+   "total": 16,
+   "margin": 4,
+   "mastery_floor": false,
+   "tier_before_floor": "success",
+   "floor_applied": false,
+   "prohibited": false,
+   "rule_violated": null,
+   "tier_before_cap": "success",
+   "tier": "success",
+   "traps_triggered": [],
+   "friction_clock": 0,
+   "sim_minutes": 6
+  },
+  {
+   "id": "R3",
+   "turn": 4,
+   "ts": "2026-11-09T17:21:12.785Z",
+   "action": "I log the incident in the shift log with both booking numbers and the vendor ref",
+   "difficulty": "standard",
+   "dc": 12,
+   "dc_parts": {
+    "base": 12,
+    "experience": 0,
+    "pressure": 0,
+    "setting": 0
+   },
+   "mode": "normal",
+   "draws": [
+    16
+   ],
+   "draw_hashes": [
+    "e8f65d279991fe89"
+   ],
+   "natural": 16,
+   "modifier": 3,
+   "mod_parts": {
+    "procedure": 2,
+    "framework": 2,
+    "specificity": 2,
+    "skill": 3,
+    "prereq_penalty": 0
+   },
+   "total": 19,
+   "margin": 7,
+   "mastery_floor": false,
+   "tier_before_floor": "success",
+   "floor_applied": false,
+   "prohibited": false,
+   "rule_violated": null,
+   "tier_before_cap": "success",
+   "tier": "success",
+   "traps_triggered": [],
+   "friction_clock": 0,
+   "sim_minutes": 5
+  }
+ ]
+}

@@ -25,6 +25,12 @@ The trainee never sees dice, DCs or scores during play, the same way a real shif
 - **At `.end`:** a 4×25 scorecard computed in code from the grader's evidence-quoted ledger, a **decision-vs-luck** debrief (which outcomes were your call and which were a bad break), and a **roll audit with the seed revealed**. The export re-verifies with `node verify_rolls.mjs export.json`.
 - Operators/judges: `?builder=1` shows rolls and cost counters live (`?builder=0` hides them).
 
+## People with stat sheets (NUCs)
+Every person in a scenario has a stat sheet written once by the scenario designer: composure, cooperation, authority, expertise and suspicion (0–5), plus goals, a private motive, secrets, what they know and don't know, and a starting trust and mood toward you (−3..+3). After that, **code owns every number**:
+- When an action is aimed at a person, their authority, trust and mood add between −2 and +2 to the DC (the DC floor still holds). Trust of +2 or more gives advantage. Trust of −2 or less gives disadvantage, as does a suspicious person hearing an unbacked claim.
+- Trust and mood update every turn from the outcome, capped at ±2 per turn. Improper acts cost trust with everyone, and mood settles over time.
+- Relationships **reset with every new scenario**, and are **never shown during play**. People only act accordingly. The debrief adds a **Relationships** table (start → end, and what moved it) and reveals what they weren't telling you. The roll audit shows each roll's NUC part, and every die still re-verifies from the seed. Design: `docs/design/NUC-STAT-SHEETS.md`.
+
 ## Customization
 ⚙ Settings: five themes (Ops, Night, High-Contrast, Field, Terminal), text size, reduced motion, plus advanced controls: difficulty, pacing, realism vs coaching, hints, image frequency and debrief depth. Settings change style and pacing only; the hard caps and the resolution engine are never relaxed.
 
@@ -38,24 +44,43 @@ Cloudflare Worker (`src/worker.js`) + KV · `src/engine.js` (pure resolution and
 Secrets are server-side only (`wrangler secret`), and the browser never sees a key. Limits: per-IP burst rate limits (Workers Rate Limiting), per-IP daily session and message caps, a global hourly turn cap, a deployment spend cap, a 16 KB request cap and a 4,000-character input cap, one in-flight turn per session, optional Turnstile, security headers, and escaped UI output. Scenario answers (hidden truth, fundamentals) are never sent to trainees; the dice are shown openly.
 
 ## Run it locally
-Requires Node 22+ (current Wrangler) and a Cloudflare account (free tier is fine). **Bring your own key:** this repo contains no API keys; you need your own Meta Model API key.
-```
-npm i
-# wrangler.toml ships with placeholders (same as wrangler.example.toml)
-npx wrangler kv namespace create SIMTRAIN_KV    # put the id in wrangler.toml
-printf 'META_API_KEY=<your key>\nADMIN_TOKEN=<optional>\n' > .dev.vars   # local secrets (gitignored)
-npx wrangler dev                                # http://localhost:8787
-```
-Deploy: `npx wrangler secret put META_API_KEY` (optionally `ADMIN_TOKEN`, `TURNSTILE_SECRET`), then `npx wrangler deploy`.
+Requires **Node 22+** and npm. No Cloudflare account and no API key are needed for the keyless demo; `wrangler dev` simulates KV and rate limits locally.
 
-Offline tests (mock model, no key, no network):
+### Quickstart: keyless demo (from a fresh clone, about 2 minutes)
 ```
-node tests/eggs.test.mjs
-node tests/short_session.test.mjs
-npx esbuild src/worker.js --bundle --format=esm --loader:.html=text --outfile=tests/worker.js   # or wrangler deploy --dry-run --outdir
-node tests/mock_e2e.mjs && node tests/hidden_e2e.mjs && node tests/settings_e2e.mjs
+git clone https://github.com/GeminoLibi/simtrain && cd simtrain
+npm install
+cp .dev.vars.example .dev.vars      # ships with MOCK_LLM=1 (keyless demo)
+npm run dev                         # http://localhost:8787, type "simTrain" to start
 ```
-Re-verify the dice from a session export: `node verify_rolls.mjs export.json`.
+`npm run dev:mock` does the same without a `.dev.vars` file.
+
+**What mock mode is:** with `MOCK_LLM=1` every model call (profile, scenario designer, classifier, narrator, grader, debrief) is answered by canned, deterministic replies from `src/mock.js`: one generic "double-booked delivery" scenario, adapted to the job you type. There are no network calls and no spend, and image requests return "image unavailable". Everything the code decides is real: the seeded d20s, DCs, tiers, caps, the 4×25 scorecard, the decision-vs-luck debrief and the seed-revealed roll audit. It's meant for checking that the app runs and for following the turn loop, not for judging scenario quality.
+
+### Real play (Meta Model API)
+```
+# in .dev.vars: remove MOCK_LLM=1 and set your own key
+META_API_KEY=<your key>
+npm run dev
+```
+**Bring your own key:** this repo contains no API keys. If neither a key nor `MOCK_LLM=1` is set, the app starts but each turn replies with a message telling you to set one.
+
+### Tests (offline, no key, no network)
+```
+npm test     # bundles the worker with esbuild, then runs every test in tests/ (including the keyless mock-mode e2e)
+```
+`tests/mock_e2e.mjs` writes a session export to a fresh temp directory and prints its path (set `SIMTRAIN_EXPORT=path` to choose one). Re-verify its dice with `npm run verify -- <path>` (or `node verify_rolls.mjs <path>`); it exits non-zero on any mismatch.
+
+### Deploy to your own Cloudflare account
+```
+npx wrangler login
+npx wrangler kv namespace create SIMTRAIN_KV        # put the id in wrangler.toml (see wrangler.example.toml)
+npx wrangler secret put META_API_KEY                # optional: ADMIN_TOKEN, TURNSTILE_SECRET
+npm run deploy
+```
+Never set `MOCK_LLM` on a real deployment. It is off unless set explicitly.
+
+Environment variables are documented in `.dev.vars.example` (`.env.example` is the same list).
 
 ## Commands
 `simTrain` start · `Continue` advance time · `.s` new scenario · `.file <title>` write a report · `.image <what>` / "show me…" · `.end` score, debrief and roll audit · ⚙ settings.

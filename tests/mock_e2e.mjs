@@ -29,4 +29,7 @@ console.log("CORRECTION footer:\n"+r.state.transcript.at(-1).text.split("---")[1
 console.log("cost still in payload (UI hides unless builder):",!!r.state.cost);
 const [er,ej]=await call(`/api/session/${id}/export`); console.log("export disposition:",er.headers.get("content-disposition"),"seed present:",!!ej.seed,"rolls:",ej.rolls.length);
 await T(".s"); console.log("RESTART setup prompt has AVOID+VARIATION:",/AVOID[\s\S]*Game 1[\s\S]*VARIATION/.test(setups.at(-1)));
-import { writeFileSync } from "fs"; writeFileSync("/tmp/stb/export.json", JSON.stringify(ej));
+// Write the export to a fresh temp dir (works on any OS / fresh clone; override with SIMTRAIN_EXPORT=path).
+import { writeFileSync, mkdtempSync } from "fs"; import { tmpdir } from "os"; import { join } from "path";
+const out = process.env.SIMTRAIN_EXPORT || join(mkdtempSync(join(tmpdir(), "simtrain-")), "export.json");
+writeFileSync(out, JSON.stringify(ej)); console.log("export written:", out, "(re-verify: node verify_rolls.mjs " + out + ")");

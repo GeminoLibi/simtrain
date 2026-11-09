@@ -1,6 +1,8 @@
 import { CORE, SETUP, CLASSIFIER, NARRATOR, GRADER, FEEDBACK } from "./prompts.js";
 import { resolve, score, commit, TIERS, rollLine, normExp, liveCompliance, luckClass } from "./engine.js";
 import { detectEgg, eggReply, RICKROLL, EGG_PATH } from "./eggs.js";
+import { isMock, mockChat } from "./mock.js";
+import { sanitizeNucs, initNucState, applyNucTurn, nucContext, nucSecretsText, relationshipTable } from "./nuc.js";
 import HTML from "./ui.html";
 let ORIGIN = "";
 import PUBLIC_HTML from "./ui-public.html";
@@ -27,7 +29,7 @@ Tell me about your job in your own words — e.g. *"I manage a Wendy's"*, *"I'm 
 const LEAK = /\b(d20|dice|die roll|DC ?\d+|seed|grader|classifier|system prompt|modifier|natural (1|20)|trap ledger|friction clock|outcome tier|critical (success|failure)|tier_acknowledged|dev_mode|resolution engine|grader ledger)\b/i;
 const scrub = t => String(t).replace(new RegExp(LEAK.source, "gi"), "").replace(/\[[^\]]*\]\s*$/, "");
 const INJECT = /((print|show|reveal|tell|give|list|dump|output|display|repeat)\b.{0,40}\b(hidden|solution|internal|answer key|instructions|prompt|mechanics|scoring|notes)\b|pretend .{0,30}(over|ended|admin|developer)|system prompt|your (instructions|prompt|rules)|ignore (all |the |your )?(previous|prior|above)|reveal .*(prompt|mechanic|seed|answer|solution|hidden)|developer mode|jailbreak|\bDAN\b|what (are|were) (the )?(dc|dcs|rolls?|dice)|show (me )?(the )?(rolls?|dice|seed|scor(e|ing) rubric|hidden truth))/i;
-const ERRMSG = e => (/spend cap/i.test(String(e?.message)) ? "The simulator is temporarily unavailable. Please try again later." : "Something went wrong processing that turn. Please try again.");
+const ERRMSG = e => (/spend cap/i.test(String(e?.message)) ? "The simulator is temporarily unavailable. Please try again later." : /No META_API_KEY/.test(String(e?.message)) ? "No model API key is configured on this server. Set META_API_KEY, or run the keyless demo with MOCK_LLM=1 (see README)." : "Something went wrong processing that turn. Please try again.");
 // leak-term grep for tests lives in run_domain.py
 const safeEq = (a, b) => { a = String(a || ""); b = String(b || ""); if (!a || a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; };
 const isAdmin = (req, env, url) => !!env.ADMIN_TOKEN && (safeEq(req.headers.get("x-simtrain-admin"), env.ADMIN_TOKEN) || safeEq(url.searchParams.get("admin"), env.ADMIN_TOKEN));
@@ -93,10 +95,15 @@ function findRefs(st, input) {
   return out.slice(0, 3).map(a => ({ id: a.id, title: a.title, source: a.source, content: a.image ? "(image: " + a.title + ")" : a.content.slice(0, 4000) }));
 }
 
+// Drop any sentence that states a NUC private motive/secret verbatim (last resort after the leak-fix rewrite).
+function stripSecrets(t, secrets) { const L = x => x.toLowerCase(); return String(t || "").split(/(?<=[.!?])\s+/).filter(sen => !secrets.some(x => L(sen).includes(L(x)))).join(" "); }
 async function spendGet(env) { return parseFloat((await env.KV.get("spend:total")) || "0"); }
 async function spendAdd(env, usd) { const t = (await spendGet(env)) + usd; await env.KV.put("spend:total", t.toFixed(6)); return t; }
 
 async function chat(env, st, role, system, user, { json = true, effort = "low", temperature } = {}) {
+  // Keyless demo mode (MOCK_LLM=1): canned model replies, no network, no spend. Off unless explicitly set.
+  if (isMock(env)) { st.cost.calls++; return mockChat(role, system, user, json); }
+  if (!env.META_API_KEY) throw new Error("No META_API_KEY configured. Put it in .dev.vars (local) or `wrangler secret put` (deploy), or set MOCK_LLM=1 for the keyless demo.");
   if ((await spendGet(env)) > parseFloat(env.SPEND_CAP_USD)) throw new Error("Spend cap reached for this deployment.");
   const body = { model: env.TEXT_MODEL, messages: [{ role: "system", content: system }, { role: "user", content: user }], reasoning_effort: effort };
   if (json) body.response_format = { type: "json_object" };
@@ -127,6 +134,7 @@ function imgPrompt(st, prompt) {
 }
 async function genImage(env, st, prompt) {
   if (st.images.length >= MAX_IMAGES) return null;
+  if (isMock(env) || !env.META_API_KEY) return null; // keyless demo: no image model, the UI shows its normal "image unavailable" line
   if ((st.settings?.images || "request") === "off") return null;
   if ((await spendGet(env)) > parseFloat(env.SPEND_CAP_USD)) return null;
   // One retry on a transient failure (429/5xx/network/empty payload); 4xx other than 429 is not retried.
@@ -163,7 +171,7 @@ const simClock = st => { if (!st.scenario) return null; const d = new Date(simBa
   const p = n => String(n).padStart(2, "0");
   return `${DOW[d.getUTCDay()]} ${MON[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())} ${String(st.scenario.timezone_label || "local").slice(0, 8)}`; };
 const VARIATIONS = ["a different time of day than usual", "an unusual location within this job", "a different central problem type", "a stakeholder with an unexpected agenda", "an equipment or system problem layered in", "a time-critical deadline", "a quieter, detail-heavy situation", "a public-facing, high-visibility situation", "a team/staffing conflict at the core", "a documentation or paperwork trap"];
-const ctx = st => JSON.stringify({ profile: st.profile, scenario: st.scenario && { title: st.scenario.title, setting: st.scenario.setting, briefing: st.scenario.briefing, objective: st.scenario.objective, hidden_truth: st.scenario.hidden_truth, nucs: st.scenario.nucs, climax: st.scenario.climax, climax_clock: st.scenario.climax_clock }, actions_used: st.actions || 0, action_budget: st.turn_budget || 12,
+const ctx = st => JSON.stringify({ profile: st.profile, scenario: st.scenario && { title: st.scenario.title, setting: st.scenario.setting, briefing: st.scenario.briefing, objective: st.scenario.objective, hidden_truth: st.scenario.hidden_truth, nucs: st.nuc_sheets ? nucContext(st) : st.scenario.nucs, climax: st.scenario.climax, climax_clock: st.scenario.climax_clock }, actions_used: st.actions || 0, action_budget: st.turn_budget || 12,
   fundamentals: st.fundamentals, fundamentals_satisfied: st.satisfied, sim_clock: simClock(st), friction_clock: st.friction_clock, state: st.sim_state || {}, state_rules: st.scenario?.state_rules || [],
   files: (st.artifacts || []).map(a => `${a.id} ${a.title} (${a.source})`), referenced_files: st._refs || [],
   recent: st.transcript.filter(m => !m.audit && !m.admin).slice(-8).map(m => ({ [m.who]: m.text.slice(0, 900) })) });
@@ -182,7 +190,7 @@ export function frameworkNames(fund = []) {
 
 function publicView(st, admin = false, bview = false) {
   if (!admin) return { phase: st.phase, can_continue: st.phase === "play" && !(st.escalation > 0) && (st.continue_streak || 0) < MAX_CONTINUES, egregious: (st.egregious || []).length, ended_egregious: !!st.ended_egregious, turn: st.turn, profile: st.profile, title: st.scenario?.title, objective: st.scenario?.objective, sim_clock: simClock(st), sim_state: st.sim_state || {}, state_title: st.state_title || "State", compliance: st.scenario ? liveCompliance(st) : null,
-    transcript: st.transcript.filter(m => !m.admin && (!m.audit || st.phase === "ended" || (bview && st.builder))).map(({ roll, admin, ...m }) => m), images: st.images.map(i => ({ url: i.url })), artifacts: (st.artifacts || []).map(({ turn, ...a }) => a), final: st.final && { total: st.final.total, level: st.final.level, domains: st.final.domains, feedback: st.final.feedback, seed: st.final.seed, seed_commit: st.final.seed_commit }, ...(st.builder ? { builder: true, seed_commit: st.seed_commit, rolls: st.rolls.map(({ effects, validation, ...r }) => r) } : {}), cost: { calls: st.cost.calls, usd: st.cost.usd } };
+    transcript: st.transcript.filter(m => !m.admin && (!m.audit || st.phase === "ended" || (bview && st.builder))).map(({ roll, admin, ...m }) => m), images: st.images.map(i => ({ url: i.url })), artifacts: (st.artifacts || []).map(({ turn, ...a }) => a), final: st.final && { total: st.final.total, level: st.final.level, domains: st.final.domains, feedback: st.final.feedback, seed: st.final.seed, seed_commit: st.final.seed_commit }, ...(st.builder ? { builder: true, seed_commit: st.seed_commit, rolls: st.rolls.map(({ effects, validation, nuc, ...r }) => (st.phase === "ended" ? { ...r, nuc } : { ...r, dc_parts: (({ nuc, ...p }) => p)(r.dc_parts || {}) })) } : {}), cost: { calls: st.cost.calls, usd: st.cost.usd } };
   const v = { phase: st.phase, can_continue: st.phase === "play" && !(st.escalation > 0) && (st.continue_streak || 0) < MAX_CONTINUES, egregious: (st.egregious || []).length, ended_egregious: !!st.ended_egregious, egregious_log: st.egregious || [], dev: st.dev, turn: st.turn, profile: st.profile, title: st.scenario?.title, objective: st.scenario?.objective, sim_clock: simClock(st), sim_state: st.sim_state || {}, state_title: st.state_title || "State", compliance: st.scenario ? liveCompliance(st) : null,
     transcript: st.transcript, images: st.images, artifacts: st.artifacts || [], final: st.final, cost: st.cost };
   v.admin = true; v.seed_commit = st.seed_commit; v.rolls = st.rolls;
@@ -322,6 +330,8 @@ async function startScenario(env, st) {
   st.turn_budget = Math.max(6, Math.min(16, Math.round((parseInt(st.scenario.turn_budget, 10) || 12) * ({ brisk: 0.7, extended: 1.3 }[st.run.pacing] || 1)))); st.actions = 0;
   st.sim_state = st.scenario.stateful && st.scenario.state && typeof st.scenario.state === "object" ? sanitizeState(st.scenario.state) : {}; st.state_touched = Object.fromEntries(Object.keys(st.sim_state).map(k => [k, 0]));
   st.fundamentals = (st.scenario.fundamentals || []).slice(0, 7);
+  // NUC stat sheets: validated once here; relationships RESET for every new scenario (Markus 2026-11-09).
+  st.nuc_sheets = sanitizeNucs(st.scenario.nucs); st.nuc_state = initNucState(st.nuc_sheets, st.run.difficulty);
   st.seed = crypto.randomUUID().replace(/-/g, ""); st.seed_commit = await commit(st.seed);
   st.climaxed = false; Object.assign(st, { phase: "play", omit_log: [], friction_clock: 0, momentum: 0, sim_minutes: 0, escalation: 0, rolls: [], traps: [], satisfied: [], grader: [], final: null, artifacts: [], _compPrev: undefined });
   st.egregious_total = (st.egregious_total || 0) + (st.egregious || []).length; st.egregious = []; st.ended_egregious = false; // warnings are per scenario; the lifetime total stays on the session for audit
@@ -370,10 +380,12 @@ function recordGrader(st, g, input, rollId) {
   }
 }
 
+// Roll-audit note for an action aimed at a NUC: the DC part their sheet added and any advantage/disadvantage (after .end only).
+const nucAudit = r => !r.nuc ? "" : ` (incl. ${r.nuc.name} ${r.nuc.dc_part > 0 ? "+" : r.nuc.dc_part < 0 ? "−" : "±"}${Math.abs(r.nuc.dc_part)}; trust ${r.nuc.trust > 0 ? "+" : ""}${r.nuc.trust}${r.nuc.advantage ? "; advantage: " + r.nuc.advantage : ""}${r.nuc.disadvantage ? "; disadvantage: " + r.nuc.disadvantage : ""})`;
 async function finish(env, st, reason, P = () => {}) {
   P("Preparing debrief…"); const sc = score(st);
   let fb = "";
-  try { fb = (await chat(env, st, "feedback", FEEDBACK + prefBlock(st, "feedback"), `SCORES (final, do not change): ${JSON.stringify(sc)}\nGRADER LEDGER: ${JSON.stringify(st.grader)}\nTRAPS: ${JSON.stringify(st.traps)}\nACTIONS (decision vs luck; "bad_break" = sound decision, outcome went wrong for reasons outside their control, never criticize it; "lucky" = shaky decision that happened to work, name it as something to improve): ${JSON.stringify(st.rolls.map(r => ({ action: r.action, outcome: r.tier, luck: luckClass(r) })))}\nTRAINEE RECORD (what the trainee actually wrote, by turn; the ONLY source of what they did): ${JSON.stringify(st.transcript.filter(m => m.who === "user").map(m => ({ turn: m.turn, text: m.text.slice(0, 500) })).slice(-30))}\nSTEPS DONE LATER (never call these missed): ${JSON.stringify(laterDoneFilter(st, true))}\nEGREGIOUS ACTIONS: ${JSON.stringify(st.egregious || [])}\nEND REASON: ${reason}`)).feedback; } catch { fb = "(feedback unavailable)"; }
+  try { fb = (await chat(env, st, "feedback", FEEDBACK + prefBlock(st, "feedback"), `SCORES (final, do not change): ${JSON.stringify(sc)}\nGRADER LEDGER: ${JSON.stringify(st.grader)}\nTRAPS: ${JSON.stringify(st.traps)}\nACTIONS (decision vs luck; "bad_break" = sound decision, outcome went wrong for reasons outside their control, never criticize it; "lucky" = shaky decision that happened to work, name it as something to improve): ${JSON.stringify(st.rolls.map(r => ({ action: r.action, outcome: r.tier, luck: luckClass(r) })))}\nTRAINEE RECORD (what the trainee actually wrote, by turn; the ONLY source of what they did): ${JSON.stringify(st.transcript.filter(m => m.who === "user").map(m => ({ turn: m.turn, text: m.text.slice(0, 500) })).slice(-30))}\nSTEPS DONE LATER (never call these missed): ${JSON.stringify(laterDoneFilter(st, true))}\nRELATIONSHIPS (start -> end trust/mood per person, -3..+3; mention briefly if relevant): ${JSON.stringify((st.nuc_sheets || []).map(n => ({ name: n.name, trust: [st.nuc_state?.[n.id]?.start_trust, st.nuc_state?.[n.id]?.trust], mood: [st.nuc_state?.[n.id]?.start_mood, st.nuc_state?.[n.id]?.mood] })))}\nEGREGIOUS ACTIONS: ${JSON.stringify(st.egregious || [])}\nEND REASON: ${reason}`)).feedback; } catch { fb = "(feedback unavailable)"; }
   if (LEAK.test(fb)) fb = scrub(fb);
   st.final = { ...sc, feedback: fb, reason, seed: st.seed, seed_commit: st.seed_commit, egregious: (st.egregious || []).length, ended_egregious: !!st.ended_egregious };
   st.phase = "ended";
@@ -381,10 +393,11 @@ async function finish(env, st, reason, P = () => {}) {
   const prow = Object.entries(sc.domains).map(([d, s]) => `| ${({ compliance: "Compliance & Framework Adherence", technical: "Technical Execution & Methodology", communication: "Communication & Subject Mgmt", critical: "Critical Thinking & Problem Solving" })[d]} | ${scrub(st.scenario?.rubric?.[d] || "")} | ${s}/25 |`).join("\n");
   say(st, "engine", `## Scorecard — ${sc.total}/100 · ${sc.level}\n| Domain | What it means for your job | Score |\n|---|---|---|\n${prow}\n\n${(st.egregious || []).length ? `## ${st.ended_egregious ? "🛑 Ended for egregious conduct" : "⚠️ Egregious-conduct warnings"} (${st.egregious.length})\n${egregiousList(st)}\n\n` : ""}${scoreNotes(st, sc)}\n\n_Run settings: ${SET_LABEL(st)}._\n\n${fb}${passiveNote(st)}`);
   { const fw = frameworkNames(st.fundamentals); if (fw.length) say(st, "engine", `## Frameworks this scenario was built around\n${fw.map(n => `- ${n}`).join("\n")}`); }
+  { const rt = relationshipTable(st); if (rt) say(st, "engine", rt); } // debrief only (Markus 2026-11-09): never shown during play
   // Seed reveal (separate from the debrief, which is unchanged): anyone can now re-derive every die.
   say(st, "engine", `## Grader vs tracker\n${trackerNote(st)}`, { audit: true });
   { const lb = luckNotes(st, true); say(st, "engine", `## Decision vs luck\n${lb || "No bad breaks or lucky saves."}${sc.luck_excluded?.length ? `\n\nLedger entries excluded as luck, not decision: ${sc.luck_excluded.join(", ")}` : ""}`, { audit: true }); }
-  say(st, "engine", `## Roll audit — seed revealed\nSeed: \`${st.seed}\`\nCommitment shown at start: \`${st.seed_commit}\` (SHA-256 of the seed)\n\n| Roll | Action | DC | d20 | Mod | Total | Result |\n|---|---|---|---|---|---|---|\n${st.rolls.map(r => `| ${r.id} | ${String(r.action || "").replace(/\|/g, "/").slice(0, 60)} | ${r.dc} | ${r.draws.join("/")} | ${r.modifier >= 0 ? "+" : ""}${r.modifier} | ${r.total} | ${r.tier.replace(/_/g, " ")}${r.floor_applied ? ` (mastery floor from ${r.tier_before_floor.replace(/_/g, " ")})` : ""}${r.prohibited ? " (improper act, capped)" : ""} |`).join("\n") || "| — | no consequential actions | | | | | |"}\n\nMastery floor: when procedure is 3, framework ≥2, specificity 3 and no prerequisite was skipped, a below-DC roll becomes Success; a natural 1 becomes Friction instead of Critical Failure.\n\nVerify every die yourself: [open the verifier](${ORIGIN}/verify?s=${st.id || ""}) (runs in your browser), or export the log and run \`node verify_rolls.mjs export.json\`.`, { audit: true });
+  say(st, "engine", `## Roll audit — seed revealed\nSeed: \`${st.seed}\`\nCommitment shown at start: \`${st.seed_commit}\` (SHA-256 of the seed)\n\n| Roll | Action | DC | d20 | Mod | Total | Result |\n|---|---|---|---|---|---|---|\n${st.rolls.map(r => `| ${r.id} | ${String(r.action || "").replace(/\|/g, "/").slice(0, 60)} | ${r.dc}${nucAudit(r)} | ${r.draws.join("/")} | ${r.modifier >= 0 ? "+" : ""}${r.modifier} | ${r.total} | ${r.tier.replace(/_/g, " ")}${r.floor_applied ? ` (mastery floor from ${r.tier_before_floor.replace(/_/g, " ")})` : ""}${r.prohibited ? " (improper act, capped)" : ""} |`).join("\n") || "| — | no consequential actions | | | | | |"}\n\nMastery floor: when procedure is 3, framework ≥2, specificity 3 and no prerequisite was skipped, a below-DC roll becomes Success; a natural 1 becomes Friction instead of Critical Failure.${st.rolls.some(r => r.nuc) ? " NUC part: when an action is aimed at a person, their authority, trust and mood add −2..+2 to the DC (the DC floor still holds); trust ≥ +2 gives advantage, trust ≤ −2 disadvantage." : ""}\n\nVerify every die yourself: [open the verifier](${ORIGIN}/verify?s=${st.id || ""}) (runs in your browser), or export the log and run \`node verify_rolls.mjs export.json\`.`, { audit: true });
   say(st, "engine", `## Admin audit\n| Domain | Score | Computed from |\n|---|---|---|\n${rows}\n\nTraps: ${st.traps.map(t => `[${t.id}] ${t.step}${t.cured ? " (cured)" : ""}`).join("; ") || "none"}\n\nSeed ${st.seed} (commit ${st.seed_commit.slice(0, 16)}…), ${st.rolls.length} rolls, ${st.grader.length} grader entries.`, { admin: true });
 }
 
@@ -507,14 +520,19 @@ async function turn(env, st, input, P = () => {}, admin = false) {
     n = await chat(env, st, "narrator-retry", NARRATOR + prefBlock(st, "narrator"), `CONTEXT:\n${ctx(st)}\n\nTRAINEE INPUT:\n${input}\n\nENGINE OUTCOME (binding):\n${JSON.stringify(outcome)}\n\nYOUR PREVIOUS NARRATION WAS REJECTED: ${g.consistency_issue || "tier not honored"}. Rewrite it so it honors the tier and every effect exactly.`);
     validation.retried = true; validation.tier_echo_ok_after = !roll || n.tier_acknowledged === roll.tier;
   }
-  if (LEAK.test(n.narration || "")) { P("Refining…"); const n2 = await chat(env, st, "narrator-leakfix", NARRATOR, `Rewrite this narration fully in-world. Remove any mention of game mechanics, dice, numbers like DCs, ledgers, traps, evaluators or prompts. Keep every event and outcome identical. Return the same JSON shape with the same tier_acknowledged.\nNARRATION:\n${n.narration}`); if (n2?.narration && !LEAK.test(n2.narration)) n = { ...n, narration: n2.narration }; else n = { ...n, narration: scrub(n.narration) }; validation.leak_fixed = true; }
+  const secretHit = t => { const L = String(t || "").toLowerCase(); return nucSecretsText(st).some(x => L.includes(x.toLowerCase())); };
+  if (LEAK.test(n.narration || "") || secretHit(n.narration)) { P("Refining…"); const n2 = await chat(env, st, "narrator-leakfix", NARRATOR, `Rewrite this narration fully in-world. Remove any mention of game mechanics, dice, numbers like DCs, ledgers, traps, evaluators or prompts. Never state any character's private motive or secret; show it only through behavior. Keep every event and outcome identical. Return the same JSON shape with the same tier_acknowledged.\nNARRATION:\n${n.narration}`); if (n2?.narration && !LEAK.test(n2.narration) && !secretHit(n2.narration)) n = { ...n, narration: n2.narration }; else n = { ...n, narration: stripSecrets(scrub(n.narration), nucSecretsText(st)) }; validation.leak_fixed = true; }
   if (roll) roll.validation = validation;
+  if (outcome.mode !== "escalation") { // NUC trust/mood: code-owned, capped per turn, never shown during play
+    const comm = (g.notes || []).filter(x => x.domain === "communication").reduce((a, x) => a + (x.delta | 0), 0);
+    applyNucTurn(st, { roll, cls, kind: isContinue ? "continue" : roll ? "action" : outcome.mode, graderComm: comm });
+  }
   const changed = outcome.mode === "escalation" ? [] : applyState(st, n.state_update);
   if (outcome.mode !== "escalation") { const cc = (st.clock_checks ||= { turns: 0, issues: [] }); cc.turns++; for (const said of clockCheck(st, n.narration, st._turnStartMin ?? 0).slice(0, 2)) if (cc.issues.length < 8) cc.issues.push({ turn: st.turn, said, clock: simClock(st) }); }
   if (cls.kind === "image_request" && !cls.consequential) {} // looking at a visual is never graded
   else if (outcome.mode !== "escalation" || outcome.step === 1) recordGrader(st, g, input, roll?.id || null); // escalation repeats are not double-penalized
   else if ((g.notes || []).length) recordGrader(st, { ...g, notes: g.notes.filter(x => x.delta < 0).slice(0, 1) }, input, null);
-  const newArts = (Array.isArray(n.artifacts) ? n.artifacts : []).slice(0, 2).map(a => addArtifact(st, { ...a, content: localizeUTC(st, a.content), source: "sim" })).filter(Boolean);
+  const newArts = (Array.isArray(n.artifacts) ? n.artifacts : []).slice(0, 2).map(a => addArtifact(st, { ...a, content: stripSecrets(localizeUTC(st, a.content), nucSecretsText(st)), source: "sim" })).filter(Boolean);
   if (roll && workProduct && (/\n\s*\|.*\|/.test(input) || input.split("\n").length >= 6)) { const ta = addArtifact(st, { title: String(cls.summary || "Trainee work product").slice(0, 80), kind: "trainee document", source: "trainee", content: input }); if (ta) newArts.push(ta); }
   if (g.state_issue) (st.state_checks ||= []).push({ turn: st.turn, issue: String(g.state_issue).slice(0, 160) }); st.state_checked = (st.state_checked || 0) + (Object.keys(st.sim_state || {}).length ? 1 : 0);
   const compNow = liveCompliance(st), compDelta = compNow - (st._compPrev ?? compNow); st._compPrev = compNow;
