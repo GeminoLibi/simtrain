@@ -1,7 +1,11 @@
-# DESIGN DRAFT: NUC stat sheets (backlog #2)
+# DESIGN: NUC stat sheets (backlog #2)
 
-Status: **draft for review. Do not merge** until Markus has signed off. No code changes are on this branch yet.
+Status: **approved.** Markus settled the open questions on 2026-11-09 (see Decisions). Phase 1 is implemented on `feat/nuc-stat-sheets`.
 Requested by Markus on 2026-11-04: "NUC stats are important for immersive rolls."
+
+## Decisions (Markus, 2026-11-09)
+1. **Relationship hints appear ONLY in the debrief, never during play.** The trainee never sees a trust or mood label, stat or number while the scenario runs, whatever the hints or coaching settings are. NUCs show their attitude only through in-world behavior.
+2. **Relationships reset every new scenario**, even within the same session. `.s` starts every NUC at its sheet's starting trust and mood. Nothing carries over.
 
 ## Problem
 Each NUC is `{name, role, disposition}`, written once by the scenario designer. The narrator improvises everything else, so:
@@ -79,7 +83,7 @@ Each NUC is `{name, role, disposition}`, written once by the scenario designer. 
 - **Narrator context:** for each NUC on scene it gets name, role, a mood/trust *label* (wary, warming, hostile, cooperative), `knows` and `goals`. It never gets numbers.
   - It gets `hidden_goal` and unrevealed `secrets` only as "behave consistently with this; never state it".
   - The LEAK filter is extended to cover secret texts.
-- **Trainee view (`publicView`):** names, roles and a coarse label at most (for example "Dana: impatient"), and only when the hints setting is `guided`. Stats, trust numbers, secrets and hidden goals are never shown.
+- **Trainee view (`publicView`), per decision 1:** nothing relationship-related appears during play. That means no labels, stats, trust or mood values, secrets or hidden goals. Only the narration reflects attitude, in-world.
 - **Debrief and roll audit (after `.end`):**
   - A relationship table: start → end trust and mood per NUC, with the turns that moved them.
   - `dc_parts.nuc` per roll.
@@ -91,7 +95,7 @@ The grader gets the trust trajectory as context for the communication domain. A 
 
 ## Settings interaction
 - `difficulty` scales starting trust: gentle +1, hard -1.
-- `realism` vs `coaching`: coaching may surface the coarse label without `guided` hints.
+- `realism` vs `coaching` and `hints` never surface relationship information during play (decision 1).
 - No setting relaxes the hard caps or the DC floor.
 
 ## Tests to add
@@ -101,12 +105,25 @@ The grader gets the trust trajectory as context for the communication domain. A 
 - Export round-trip: `nuc_state` survives save and load, and appears in the admin export but not in the public export until `.end`.
 
 ## Rollout
-1. Schema, sanitizer and persistence, with no roll effects yet. Ship and observe. (S)
-2. Roll coupling (DC part and advantage) plus audit and debrief output. (M)
-3. Secrets and reveal, the promise ledger, and grader context. (M)
+1. **Phase 1 (shipped on `feat/nuc-stat-sheets`):**
+   - Schema and sanitizer, with backward compatibility for old-shape NUCs.
+   - Generation by the designer prompt.
+   - `target_nuc` and `unverified_claim` on the classifier.
+   - The DC part (±2 cap, floor kept) and advantage or disadvantage.
+   - Per-turn trust and mood updates in code, with caps, plus mood decay on Continue.
+   - Reset on every new scenario (decision 2).
+   - `dc_parts.nuc` and `roll.nuc` in the roll audit.
+   - Old exports still verify.
+   - Nothing shown during play (decision 1).
+   - A relationship table in the debrief, with hidden goals and secrets shown as learning points.
+2. **Phase 2:**
+   - Secrets revealed in play via `reveal_dc` and `ENGINE OUTCOME.reveal`.
+   - A promise ledger (broken promise -2 trust).
+   - The `respectful_communication` mood tag (once per NUC per 3 turns).
+   - Trust trajectory passed to the grader as communication context.
+3. **Phase 3:**
+   - A Muse playtest pass on 3 roles to tune the delta table and the DC formula against "rolls feel earned".
+   - Mock mode with several NUC archetypes.
+   - Optional relationship trend chart in the debrief.
 
-Estimate: L in total (about 3–5 days), plus a Muse playtest pass on 3 roles to check that NUCs feel consistent and that rolls feel earned.
-
-## Open questions for Markus
-- Should trainees ever see a relationship hint during play (coarse labels behind `guided` hints), or only in the debrief?
-- Should rapport carry across `.s` within a session (recurring characters), or should every scenario start fresh? The proposal is fresh, with an option for later.
+Phase 1 took about 1 day. Phases 2 and 3 are estimated at about 2–3 days together.
