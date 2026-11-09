@@ -38,24 +38,43 @@ Cloudflare Worker (`src/worker.js`) + KV · `src/engine.js` (pure resolution and
 Secrets are server-side only (`wrangler secret`), and the browser never sees a key. Limits: per-IP burst rate limits (Workers Rate Limiting), per-IP daily session and message caps, a global hourly turn cap, a deployment spend cap, a 16 KB request cap and a 4,000-character input cap, one in-flight turn per session, optional Turnstile, security headers, and escaped UI output. Scenario answers (hidden truth, fundamentals) are never sent to trainees; the dice are shown openly.
 
 ## Run it locally
-Requires Node 22+ (current Wrangler) and a Cloudflare account (free tier is fine). **Bring your own key:** this repo contains no API keys; you need your own Meta Model API key.
-```
-npm i
-# wrangler.toml ships with placeholders (same as wrangler.example.toml)
-npx wrangler kv namespace create SIMTRAIN_KV    # put the id in wrangler.toml
-printf 'META_API_KEY=<your key>\nADMIN_TOKEN=<optional>\n' > .dev.vars   # local secrets (gitignored)
-npx wrangler dev                                # http://localhost:8787
-```
-Deploy: `npx wrangler secret put META_API_KEY` (optionally `ADMIN_TOKEN`, `TURNSTILE_SECRET`), then `npx wrangler deploy`.
+Requires **Node 22+** and npm. No Cloudflare account and no API key are needed for the keyless demo; `wrangler dev` simulates KV and rate limits locally.
 
-Offline tests (mock model, no key, no network):
+### Quickstart: keyless demo (from a fresh clone, about 2 minutes)
 ```
-node tests/eggs.test.mjs
-node tests/short_session.test.mjs
-npx esbuild src/worker.js --bundle --format=esm --loader:.html=text --outfile=tests/worker.js   # or wrangler deploy --dry-run --outdir
-node tests/mock_e2e.mjs && node tests/hidden_e2e.mjs && node tests/settings_e2e.mjs
+git clone https://github.com/GeminoLibi/simtrain && cd simtrain
+npm install
+cp .dev.vars.example .dev.vars      # ships with MOCK_LLM=1 (keyless demo)
+npm run dev                         # http://localhost:8787, type "simTrain" to start
 ```
-Re-verify the dice from a session export: `node verify_rolls.mjs export.json`.
+`npm run dev:mock` does the same without a `.dev.vars` file.
+
+**What mock mode is:** with `MOCK_LLM=1` every model call (profile, scenario designer, classifier, narrator, grader, debrief) is answered by canned, deterministic replies from `src/mock.js`: one generic "double-booked delivery" scenario, adapted to the job you type. There are no network calls and no spend, and image requests return "image unavailable". Everything the code decides is real: the seeded d20s, DCs, tiers, caps, the 4×25 scorecard, the decision-vs-luck debrief and the seed-revealed roll audit. It's meant for checking that the app runs and for following the turn loop, not for judging scenario quality.
+
+### Real play (Meta Model API)
+```
+# in .dev.vars: remove MOCK_LLM=1 and set your own key
+META_API_KEY=<your key>
+npm run dev
+```
+**Bring your own key:** this repo contains no API keys. If neither a key nor `MOCK_LLM=1` is set, the app starts but each turn replies with a message telling you to set one.
+
+### Tests (offline, no key, no network)
+```
+npm test     # bundles the worker with esbuild, then runs every test in tests/ (including the keyless mock-mode e2e)
+```
+`tests/mock_e2e.mjs` writes a session export to a fresh temp directory and prints its path (set `SIMTRAIN_EXPORT=path` to choose one). Re-verify its dice with `npm run verify -- <path>` (or `node verify_rolls.mjs <path>`); it exits non-zero on any mismatch.
+
+### Deploy to your own Cloudflare account
+```
+npx wrangler login
+npx wrangler kv namespace create SIMTRAIN_KV        # put the id in wrangler.toml (see wrangler.example.toml)
+npx wrangler secret put META_API_KEY                # optional: ADMIN_TOKEN, TURNSTILE_SECRET
+npm run deploy
+```
+Never set `MOCK_LLM` on a real deployment. It is off unless set explicitly.
+
+Environment variables are documented in `.dev.vars.example` (`.env.example` is the same list).
 
 ## Commands
 `simTrain` start · `Continue` advance time · `.s` new scenario · `.file <title>` write a report · `.image <what>` / "show me…" · `.end` score, debrief and roll audit · ⚙ settings.

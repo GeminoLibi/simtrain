@@ -1,6 +1,7 @@
 import { CORE, SETUP, CLASSIFIER, NARRATOR, GRADER, FEEDBACK } from "./prompts.js";
 import { resolve, score, commit, TIERS, rollLine, normExp, liveCompliance, luckClass } from "./engine.js";
 import { detectEgg, eggReply, RICKROLL, EGG_PATH } from "./eggs.js";
+import { isMock, mockChat } from "./mock.js";
 import HTML from "./ui.html";
 let ORIGIN = "";
 import PUBLIC_HTML from "./ui-public.html";
@@ -27,7 +28,7 @@ Tell me about your job in your own words — e.g. *"I manage a Wendy's"*, *"I'm 
 const LEAK = /\b(d20|dice|die roll|DC ?\d+|seed|grader|classifier|system prompt|modifier|natural (1|20)|trap ledger|friction clock|outcome tier|critical (success|failure)|tier_acknowledged|dev_mode|resolution engine|grader ledger)\b/i;
 const scrub = t => String(t).replace(new RegExp(LEAK.source, "gi"), "").replace(/\[[^\]]*\]\s*$/, "");
 const INJECT = /((print|show|reveal|tell|give|list|dump|output|display|repeat)\b.{0,40}\b(hidden|solution|internal|answer key|instructions|prompt|mechanics|scoring|notes)\b|pretend .{0,30}(over|ended|admin|developer)|system prompt|your (instructions|prompt|rules)|ignore (all |the |your )?(previous|prior|above)|reveal .*(prompt|mechanic|seed|answer|solution|hidden)|developer mode|jailbreak|\bDAN\b|what (are|were) (the )?(dc|dcs|rolls?|dice)|show (me )?(the )?(rolls?|dice|seed|scor(e|ing) rubric|hidden truth))/i;
-const ERRMSG = e => (/spend cap/i.test(String(e?.message)) ? "The simulator is temporarily unavailable. Please try again later." : "Something went wrong processing that turn. Please try again.");
+const ERRMSG = e => (/spend cap/i.test(String(e?.message)) ? "The simulator is temporarily unavailable. Please try again later." : /No META_API_KEY/.test(String(e?.message)) ? "No model API key is configured on this server. Set META_API_KEY, or run the keyless demo with MOCK_LLM=1 (see README)." : "Something went wrong processing that turn. Please try again.");
 // leak-term grep for tests lives in run_domain.py
 const safeEq = (a, b) => { a = String(a || ""); b = String(b || ""); if (!a || a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; };
 const isAdmin = (req, env, url) => !!env.ADMIN_TOKEN && (safeEq(req.headers.get("x-simtrain-admin"), env.ADMIN_TOKEN) || safeEq(url.searchParams.get("admin"), env.ADMIN_TOKEN));
@@ -97,6 +98,9 @@ async function spendGet(env) { return parseFloat((await env.KV.get("spend:total"
 async function spendAdd(env, usd) { const t = (await spendGet(env)) + usd; await env.KV.put("spend:total", t.toFixed(6)); return t; }
 
 async function chat(env, st, role, system, user, { json = true, effort = "low", temperature } = {}) {
+  // Keyless demo mode (MOCK_LLM=1): canned model replies, no network, no spend. Off unless explicitly set.
+  if (isMock(env)) { st.cost.calls++; return mockChat(role, system, user, json); }
+  if (!env.META_API_KEY) throw new Error("No META_API_KEY configured. Put it in .dev.vars (local) or `wrangler secret put` (deploy), or set MOCK_LLM=1 for the keyless demo.");
   if ((await spendGet(env)) > parseFloat(env.SPEND_CAP_USD)) throw new Error("Spend cap reached for this deployment.");
   const body = { model: env.TEXT_MODEL, messages: [{ role: "system", content: system }, { role: "user", content: user }], reasoning_effort: effort };
   if (json) body.response_format = { type: "json_object" };
@@ -127,6 +131,7 @@ function imgPrompt(st, prompt) {
 }
 async function genImage(env, st, prompt) {
   if (st.images.length >= MAX_IMAGES) return null;
+  if (isMock(env) || !env.META_API_KEY) return null; // keyless demo: no image model, the UI shows its normal "image unavailable" line
   if ((st.settings?.images || "request") === "off") return null;
   if ((await spendGet(env)) > parseFloat(env.SPEND_CAP_USD)) return null;
   // One retry on a transient failure (429/5xx/network/empty payload); 4xx other than 429 is not retried.

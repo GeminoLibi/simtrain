@@ -1,0 +1,15 @@
+# Local secrets for `npx wrangler dev`. Copy to .dev.vars (gitignored):  cp .dev.vars.example .dev.vars
+# Never commit real keys. For a deploy, use `npx wrangler secret put <NAME>` instead.
+
+# Keyless demo: canned mock model replies, no network, no spend. The dice, caps, scorecard and roll audit
+# still run for real. Remove this line (or set 0) and fill META_API_KEY for real scenarios.
+MOCK_LLM=1
+
+# Meta Model API key (required for real play unless MOCK_LLM=1).
+META_API_KEY=
+
+# Optional: unlocks /admin and the admin log endpoints (send as ?admin=<token> or the x-simtrain-admin header).
+ADMIN_TOKEN=
+
+# Optional: Cloudflare Turnstile secret; when set, new sessions require a Turnstile token.
+TURNSTILE_SECRET=
