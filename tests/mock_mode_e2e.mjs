@@ -37,4 +37,14 @@ for (const roll of ej.rolls) { const i = +roll.id.slice(1); const d = []; for (l
 t("every roll re-derives from the seed", true);
 t("zero network calls", netCalls === 0);
 t("zero spend", !kv.has("spend:total") || parseFloat(kv.get("spend:total").v) === 0);
+// 3) Continue-spam guard (shipped for judging, previously untested): no time skip while a decision is pending,
+//    at most 2 Continues in a row.
+{ const [, s2] = await call(env, "/api/session", {}); const C = i => call(env, `/api/session/${s2.id}/turn`, { input: i });
+  await C("simTrain"); await C("ROLE: line cook\nEXPERIENCE_LEVEL: New");
+  let [, a] = await C("I handle it."); // vague -> escalation (decision pending)
+  const clock = a.state.sim_clock; [, a] = await C("Continue");
+  t("Continue refused while a decision is pending", /waiting on you/i.test(a.state.transcript.at(-1).text) && a.state.sim_clock === clock);
+  await C("I greet Dana, apologize for the wait and check both bookings against the schedule.");
+  await C("Continue"); await C("Continue"); [, a] = await C("Continue");
+  t("third Continue in a row refused", /won't skip/i.test(a.state.transcript.at(-1).text)); }
 console.log(`${ok} passed`);
