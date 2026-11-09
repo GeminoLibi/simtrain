@@ -12,7 +12,7 @@ Sources: Markus's requests (10/29, 10/31, 11/4), the post-mortem on the submissi
 | 1 | Fresh-clone runnability (keyless demo, env example, test paths, README) | P0 | S | **Done** on `fix/fresh-clone` |
 | 2 | NUC stat sheets that feed rolls and persist mood/trust | P1 | L | **Phase 1 done** (`feat/nuc-stat-sheets`); phases 2–3 open (see design doc) |
 | 3 | CI: `npm test` on every push and PR | P1 | S | Open |
-| 4 | Deploy from the repo (one source of truth for the live worker) | P1 | S | Open |
+| 4 | Deploy from the repo (one source of truth for the live worker) | P1 | S | **Partly done**: live now deploys from this repo's `main` via a gitignored `wrangler.prod.toml`; CI dry-run and post-deploy smoke still open |
 | 5 | Multiple model providers (bring your own key) | P1 | M | Open |
 | 6 | Injection gap: role-description smuggling across sessions | P1 | S | Open (Muse 10/29 marked it NOT TESTED) |
 | 7 | Continue-spam guard regression test | P1 | S | **Done** on `fix/fresh-clone` (the guard shipped 10/30) |

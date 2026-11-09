@@ -80,6 +80,8 @@ npm run deploy
 ```
 Never set `MOCK_LLM` on a real deployment. It is off unless set explicitly.
 
+To keep your real IDs out of git, copy `wrangler.toml` to `wrangler.prod.toml` (gitignored), fill in the IDs there and deploy with `npx wrangler deploy -c wrangler.prod.toml`.
+
 Environment variables are documented in `.dev.vars.example` (`.env.example` is the same list).
 
 ## Commands

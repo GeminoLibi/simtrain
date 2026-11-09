@@ -11,3 +11,7 @@ tests/worker.js
 # example files are meant to be committed
 !.env.example
 !.dev.vars.example
+
+# real deployment configs (IDs) stay local
+wrangler.prod.toml
+wrangler.*.local.toml
