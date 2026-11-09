@@ -25,6 +25,12 @@ The trainee never sees dice, DCs or scores during play, the same way a real shif
 - **At `.end`:** a 4×25 scorecard computed in code from the grader's evidence-quoted ledger, a **decision-vs-luck** debrief (which outcomes were your call and which were a bad break), and a **roll audit with the seed revealed**. The export re-verifies with `node verify_rolls.mjs export.json`.
 - Operators/judges: `?builder=1` shows rolls and cost counters live (`?builder=0` hides them).
 
+## People with stat sheets (NUCs)
+Every person in a scenario has a stat sheet written once by the scenario designer: composure, cooperation, authority, expertise and suspicion (0–5), plus goals, a private motive, secrets, what they know and don't know, and a starting trust and mood toward you (−3..+3). After that, **code owns every number**:
+- When an action is aimed at a person, their authority, trust and mood add between −2 and +2 to the DC (the DC floor still holds). Trust of +2 or more gives advantage. Trust of −2 or less gives disadvantage, as does a suspicious person hearing an unbacked claim.
+- Trust and mood update every turn from the outcome, capped at ±2 per turn. Improper acts cost trust with everyone, and mood settles over time.
+- Relationships **reset with every new scenario**, and are **never shown during play**. People only act accordingly. The debrief adds a **Relationships** table (start → end, and what moved it) and reveals what they weren't telling you. The roll audit shows each roll's NUC part, and every die still re-verifies from the seed. Design: `docs/design/NUC-STAT-SHEETS.md`.
+
 ## Customization
 ⚙ Settings: five themes (Ops, Night, High-Contrast, Field, Terminal), text size, reduced motion, plus advanced controls: difficulty, pacing, realism vs coaching, hints, image frequency and debrief depth. Settings change style and pacing only; the hard caps and the resolution engine are never relaxed.
 

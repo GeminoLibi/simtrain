@@ -32,7 +32,15 @@ Return ONLY a JSON object:
  "objective": str,                    // what "resolved" means
  "hidden_truth": str,                 // what is really going on (never shown to trainee)
  "fundamentals": [ {"id": "F1", "step": str, "framework": str, "domain": "compliance|technical|communication|critical"} ],  // 4-7 fundamental steps a professional MUST perform (whatever this job truly requires, e.g. chain of custody; checklist before engine shutdown; two-in/two-out; discard food held out of temperature and log it; follow the refund policy and stay calm with the customer; verify guest ID before issuing a key). These are the trap mechanic.
- "nucs": [ {"name": str, "role": str, "disposition": str} ],
+ "nucs": [ {                          // 2-5 people the trainee deals with; each gets a stat sheet (code owns every number after this)
+   "id": "N1", "name": str, "role": str, "disposition": str,
+   "stats": {"composure": 0-5, "cooperation": 0-5, "authority": 0-5, "expertise": 0-5, "suspicion": 0-5},  // 2 = average for this job; authority = how much their yes/no gates progress
+   "goals": [str],                    // 1-3 things they want in this scene
+   "hidden_goal": str|null,           // a private motive the trainee is not told (optional)
+   "secrets": [ {"fact": str, "reveal_dc": 10-25} ],   // 0-2 facts they hide
+   "knows": [str], "doesnt_know": [str],             // what they can and cannot tell the trainee (<= 6 each)
+   "start": {"trust": -3..3, "mood": -3..3}         // attitude toward the trainee at the start, consistent with disposition
+ } ],
  "rubric": {"compliance": str, "technical": str, "communication": str, "critical": str},  // one plain sentence each: what that rubric domain means FOR THIS JOB (e.g. for a restaurant manager compliance = food safety code, labor law and company policy)
  "opening_image_prompt": str,         // photoreal scene description, no text, no real people
  "turn_budget": int,                   // 8-14: the trainee actions the whole scenario should take, climax included
@@ -70,6 +78,8 @@ Return ONLY JSON:
  "correct_approach": str|null,    // if egregious: one plain sentence on what a professional would have done instead; else null
  "advantage_reason": str|null,    // concrete in-world edge (prior good prep, cooperative NUC, solid evidence) — rare
  "disadvantage_reason": str|null, // concrete in-world handicap (hostile NUC, stale data, time pressure) — rare
+ "target_nuc": str|null,          // id (e.g. "N1") of the CONTEXT.scenario.nucs person this input mainly acts on, asks, persuades or speaks to; null if none
+ "unverified_claim": bool,        // true if the trainee asserts a fact or authority to a person without showing/citing any backing
  "image_request": str|null        // if the user asks to SEE something (photo, panel, document, scene), a photoreal prompt for it; else null
 }`;
 
@@ -82,6 +92,7 @@ HARD RULES
 - Never decide the trainee's next move or hint at the answer. End on the situation or with an NUC's line. Do NOT print a clock stamp: the engine appends the official time. CONTEXT.sim_clock is the LOCAL time NOW, at the END of this turn: every time you state (in narration, state_update or files) must be at or before it and within this turn's elapsed minutes; never jump to another day.
 - STATE: if CONTEXT.state is non-empty it is the authoritative situation. Keep the narration consistent with it, never skip ahead (no skipped innings, shifts or steps), and return "state_update" with ONLY the keys whose values changed because of this turn (may be {}). The update must reflect the situation AFTER everything narrated this turn (every out, run, count, substitution, filed document or interview that happened), never the situation before it. A player who has entered the game is "in game", never still "ready"/"warming"; a removed player is "used, may not re-enter". Statuses must be unambiguous words (available / warming / in game / used / pending / done), never "maybe" or "?". You may add a new key only for genuinely new tracked facts. Do not let anything happen that breaks CONTEXT.state_rules.
 - Stay consistent with the briefing and prior transcript (existing evidence, names, institutions).
+- PEOPLE: CONTEXT.scenario.nucs gives each person's goals, what they know and don't know, private_motive and attitude_toward_trainee. Play every person consistently with these: their attitude shows only through in-world behavior (tone, cooperation, patience). Never state a private_motive, never reveal what they don't know, and never describe attitudes with meta words like "trust level", scores or labels.
 - PACING: if the ENGINE OUTCOME includes a PACING effect, obey it exactly (bring the climax or the resolution in this turn when told). CONTEXT.actions_used / action_budget show how far along the scenario is.
 - STATE FRESHNESS: every turn, update any time-sensitive state (occupancy, queues, breaks in progress, pending items) to what it is NOW; a status left "in progress" for an hour must be updated.
 - TIME: CONTEXT includes elapsed_minutes for this turn; describe time passing consistently with it ("immediately" means a minute or two, not half an hour).

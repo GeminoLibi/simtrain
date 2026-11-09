@@ -10,7 +10,7 @@ Sources: Markus's requests (10/29, 10/31, 11/4), the post-mortem on the submissi
 | # | Item | Pri | Size | Status |
 |---|---|---|---|---|
 | 1 | Fresh-clone runnability (keyless demo, env example, test paths, README) | P0 | S | **Done** on `fix/fresh-clone` |
-| 2 | NUC stat sheets that feed rolls and persist mood/trust | P1 | L | Design draft: `docs/design/NUC-STAT-SHEETS.md` on branch `design/nuc-stat-sheets` |
+| 2 | NUC stat sheets that feed rolls and persist mood/trust | P1 | L | **Phase 1 done** (`feat/nuc-stat-sheets`); phases 2–3 open (see design doc) |
 | 3 | CI: `npm test` on every push and PR | P1 | S | Open |
 | 4 | Deploy from the repo (one source of truth for the live worker) | P1 | S | Open |
 | 5 | Multiple model providers (bring your own key) | P1 | M | Open |

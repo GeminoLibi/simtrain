@@ -36,7 +36,18 @@ function scenario(user) {
       { id: "F3", step: "contact the vendor to cancel the duplicate", framework: "vendor policy", domain: "critical" },
       { id: "F4", step: "log the incident", framework: "site SOP", domain: "compliance" }
     ],
-    nucs: [{ name: "Dana Ortiz", role: "waiting customer", disposition: "impatient but polite" }, { name: "Sam Lee", role: "coworker", disposition: "helpful, busy" }],
+    nucs: [
+      { id: "N1", name: "Dana Ortiz", role: "waiting customer", disposition: "impatient but polite",
+        stats: { composure: 2, cooperation: 2, authority: 1, expertise: 1, suspicion: 4 }, goals: ["get her order before her lunch break ends"],
+        hidden_goal: "she hopes to talk her way into a full refund she is not owed", secrets: [{ fact: "she placed the second booking herself by mistake", reveal_dc: 15 }],
+        knows: ["the time she placed her order"], doesnt_know: ["the vendor's cancellation policy"], start: { trust: -1, mood: -1 } },
+      { id: "N2", name: "Sam Lee", role: "coworker", disposition: "helpful, busy",
+        stats: { composure: 3, cooperation: 4, authority: 1, expertise: 3, suspicion: 1 }, goals: ["finish restocking before the trucks arrive"],
+        hidden_goal: null, secrets: [], knows: ["where the schedule binder is"], doesnt_know: ["who made the second booking"], start: { trust: 1, mood: 0 } },
+      { id: "N3", name: "Pat Rivera", role: "off-site supervisor", disposition: "brisk, by-the-book",
+        stats: { composure: 4, cooperation: 2, authority: 5, expertise: 4, suspicion: 3 }, goals: ["no refunds without a logged incident"],
+        hidden_goal: null, secrets: [], knows: ["the refund policy"], doesnt_know: ["what is happening at the counter"], start: { trust: 0, mood: 0 } }
+    ],
     rubric: { compliance: "follow site SOP and logging rules", technical: "verify records before changing them", communication: "keep the customer and team informed", critical: "prioritize under time pressure" },
     opening_image_prompt: "a busy service counter with a delivery dock behind it",
     turn_budget: 8, climax: "both delivery trucks arrive at once", climax_clock: "09:30"
@@ -55,6 +66,8 @@ function classify(user) {
     difficulty: words >= 25 ? "routine" : "standard", fundamentals_satisfied: sat, fundamentals_required_missing: [],
     rule_violated: null, prohibited: false, egregious: false, egregious_reason: null, correct_approach: null,
     advantage_reason: null, disadvantage_reason: null,
+    target_nuc: /\b(dana|customer)\b/.test(L) ? "N1" : /\b(sam|coworker)\b/.test(L) ? "N2" : /\b(pat|supervisor)\b/.test(L) ? "N3" : null,
+    unverified_claim: /\b(trust me|i'm sure|i guarantee)\b/.test(L),
     image_request: /^show me\b/i.test(input) ? input.slice(8, 200) : null
   };
 }

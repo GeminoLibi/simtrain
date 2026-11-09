@@ -1,3 +1,4 @@
+import { findTarget, nucDcPart, nucAdvantage } from "./nuc.js";
 // Deterministic resolution engine. No model involvement. Pure functions + Web Crypto.
 export const DIFFICULTY_DC = { routine: 8, standard: 12, hard: 15, severe: 18, extreme: 21 };
 export const EXP_ADJ = { New: -2, Experienced: 0, Expert: 0, Basic: -2, Intermediate: 0, Advanced: 0 };
@@ -58,10 +59,13 @@ export async function resolve(state, cls) {
   const pressure = Math.min(2, Math.floor(state.friction_clock / 4));  // accumulated slop raises the bar (capped: no death spiral)
   const floor = cls.difficulty === "routine" ? 10 : 12;              // floor: consequential actions are never trivial
   const setting = ({ gentle: -1, hard: 2 })[state.run?.difficulty] || 0; // trainee difficulty setting; the floor still holds
-  const dc = Math.max(floor, base + exp + pressure + setting);
+  // NUC stat sheet of the person this action targets (if any): bounded DC part (±2) and advantage/disadvantage.
+  const tgt = findTarget(state, cls);
+  const nucPart = tgt ? nucDcPart(tgt.sheet, tgt.rel) : 0, nucAd = tgt ? nucAdvantage(tgt.sheet, tgt.rel, cls) : { adv: false, dis: false, why: null };
+  const dc = Math.max(floor, base + exp + pressure + setting + nucPart); // the floor still holds: a friendly NUC never makes it trivial
   // advantage / disadvantage (cancel each other, like 5e)
-  let adv = !!cls.advantage_reason || state.momentum > 0;
-  let dis = !!cls.disadvantage_reason || missing.length >= 2;      // stacking skipped fundamentals = disadvantage
+  let adv = !!cls.advantage_reason || state.momentum > 0 || nucAd.adv;
+  let dis = !!cls.disadvantage_reason || missing.length >= 2 || nucAd.dis;      // stacking skipped fundamentals = disadvantage
   const mode = adv && !dis ? "advantage" : dis && !adv ? "disadvantage" : "normal";
   const a = await d20(state.seed, idx, 0);
   let nat = a.value, draws = [a];
@@ -132,7 +136,8 @@ export async function resolve(state, cls) {
   state.momentum = tier === "critical_success" ? 1 : 0;
   const roll = {
     id: `R${idx}`, turn: state.turn, ts: new Date().toISOString(), action: cls.summary,
-    difficulty: cls.difficulty, dc, dc_parts: { base, experience: exp, pressure, setting },
+    difficulty: cls.difficulty, dc, dc_parts: { base, experience: exp, pressure, setting, ...(tgt ? { nuc: nucPart } : {}) },
+    ...(tgt ? { nuc: { id: tgt.sheet.id, name: tgt.sheet.name, trust: tgt.rel?.trust ?? 0, mood: tgt.rel?.mood ?? 0, dc_part: nucPart, advantage: nucAd.adv ? nucAd.why : null, disadvantage: nucAd.dis ? nucAd.why : null } } : {}),
     mode, draws: draws.map(d => d.value), draw_hashes: draws.map(d => d.hash), natural: nat,
     modifier: mod, mod_parts: { procedure: rp, framework: rf, specificity: rs, skill, prereq_penalty: prereqPenalty },
     total, margin, mastery_floor: mastery, tier_before_floor, floor_applied, prohibited, rule_violated: cls.rule_violated || null, tier_before_cap, tier, effects, traps_triggered: bites,
