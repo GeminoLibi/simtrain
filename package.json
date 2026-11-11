@@ -9,7 +9,7 @@
     "dev": "wrangler dev",
     "dev:mock": "wrangler dev --var MOCK_LLM:1",
     "build:test": "esbuild src/worker.js --bundle --format=esm --loader:.html=text --outfile=tests/worker.js --log-level=warning",
-    "test": "npm run build:test && node tests/eggs.test.mjs && node tests/short_session.test.mjs && node tests/mock_e2e.mjs && node tests/hidden_e2e.mjs && node tests/settings_e2e.mjs && node tests/mock_mode_e2e.mjs && node tests/nuc_engine.test.mjs && node tests/nuc_e2e.mjs && node tests/compat_v1.test.mjs",
+    "test": "npm run build:test && node tests/eggs.test.mjs && node tests/short_session.test.mjs && node tests/mock_e2e.mjs && node tests/hidden_e2e.mjs && node tests/settings_e2e.mjs && node tests/mock_mode_e2e.mjs && node tests/nuc_engine.test.mjs && node tests/nuc_e2e.mjs && node tests/compat_v1.test.mjs && node tests/prohibited.test.mjs && node tests/inspiration_e2e.mjs",
     "verify": "node verify_rolls.mjs",
     "deploy": "wrangler deploy"
   },

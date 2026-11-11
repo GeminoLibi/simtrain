@@ -17,7 +17,7 @@ The model cannot simply tell you a nice story about how you did:
 ## What the trainee sees (hidden mechanics)
 The trainee never sees dice, DCs or scores during play, the same way a real shift doesn't show you odds. Outcomes show up only as in-world consequences: a records request comes back partial, a crew member pushes back, the clock runs.
 - **Code decides, the model narrates.** Each consequential action is classified by Muse Spark, resolved by a seeded d20 in code (mastery floor: textbook actions can't be failed by luck; a natural 1 lands on Friction, not catastrophe), and the narrator must render that exact tier.
-- **Unlawful or unsafe acts** are auto-failed in code and always carry a consequence.
+- **Unlawful or unsafe acts** use a near-impossible check (natural 20 plus a confirmation d20 of 17 or higher — about 1 in 100 on a normal roll) instead of an auto-fail. A lucky result still carries a consequence and is still graded as improper. Inspiration, earned at a very high bar and never spent by the player, can auto-clear one egregious-conduct warning per scenario.
 - **Running local clock** at the job's own pace; `Continue` jumps to the next meaningful beat.
 - **Continue-spam guard:** if a decision is pending, or Continue is pressed repeatedly, time does not skip ("The scene is waiting on you").
 - **Job artifacts** (A-001…): logs, forms, temp sheets, radio transcripts, lab panels; the trainee writes their own with `.file`. Stateful jobs get a 📋 state tracker; investigations get a Case state panel.
