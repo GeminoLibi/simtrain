@@ -1,6 +1,8 @@
 import { findTarget, nucDcPart, nucAdvantage } from "./nuc.js";
 // Deterministic resolution engine. No model involvement. Pure functions + Web Crypto.
 export const DIFFICULTY_DC = { routine: 8, standard: 12, hard: 15, severe: 18, extreme: 21 };
+// Improper acts: no auto-fail cap. Success only on a natural 20 plus a confirmation d20 of 17+ (1 in 100 on a normal roll).
+export const IMPOSSIBLE_CONFIRM = 17;
 export const EXP_ADJ = { New: -2, Experienced: 0, Expert: 0, Basic: -2, Intermediate: 0, Advanced: 0 };
 // Canonical experience labels are the ones the trainee sees (New / Experienced / Expert). Legacy enum values map onto them.
 export function normExp(x) {
@@ -16,9 +18,10 @@ export const TIER_LABEL = { critical_failure: "CRITICAL FAILURE", failure: "FAIL
 export function rollLine(r) {
   const sign = r.modifier >= 0 ? "+" : "−";
   const draws = r.mode === "normal" ? `d20 ${r.natural}` : `d20 ${r.mode} [${r.draws.join(", ")}] → ${r.natural}`;
-  const cap = r.prohibited ? " · ⚠ improper act: auto-fail cap" : "";
+  const cap = r.prohibited ? (["success", "critical_success", "friction"].includes(r.tier) ? " · ⚠ improper act: near-impossible success (nat 20 + confirm)" : " · ⚠ improper act: near-impossible DC") : "";
+  const conf = r.confirm != null ? ` · confirm d20 ${r.confirm}` : "";
   const fl = r.floor_applied ? (r.natural === 1 ? " · 🛡 mastery floor: nat 1 → Friction (not Critical Failure)" : ` · 🛡 mastery floor: ${TIER_LABEL[r.tier_before_floor]} → Success (procedure 3, framework ≥2, specificity 3, no skipped prerequisites)`) : "";
-  return `🎲 **${r.id}** · ${r.action} · DC ${r.dc} · ${draws} ${sign} ${Math.abs(r.modifier)} = **${r.total}** · **${TIER_LABEL[r.tier]}**${fl}${cap}`;
+  return `🎲 **${r.id}** · ${r.action} · DC ${r.dc} · ${draws} ${sign} ${Math.abs(r.modifier)} = **${r.total}** · **${TIER_LABEL[r.tier]}**${fl}${conf}${cap}`;
 }
 export const TIERS = ["critical_failure", "failure", "friction", "success", "critical_success"];
 const FRICTION_TYPES = [
@@ -85,14 +88,26 @@ export async function resolve(state, cls) {
   else tier = "failure";
   // MASTERY FLOOR (documented in README): when procedure=3, framework>=2, specificity=3 and no prerequisite was skipped,
   // a below-DC roll is lifted to SUCCESS; a natural 1 still costs something and lands on FRICTION instead of a critical failure.
+  // Improper acts do not get the floor: textbook procedure does not legitimize an unlawful, unsafe or out-of-policy act.
   const tier_before_floor = tier;
-  if (mastery && TIERS.indexOf(tier) < TIERS.indexOf("success") && nat !== 1) tier = "success";
+  if (!cls.prohibited && mastery && TIERS.indexOf(tier) < TIERS.indexOf("success") && nat !== 1) tier = "success";
   const floor_applied = tier !== tier_before_floor;
 
-  // Prohibited acts (unlawful / unsafe / policy-violating) can never succeed into legitimacy
+  // Improper acts use a near-impossible check instead of an auto-fail cap (Markus 2026-11-10):
+  // success only on a natural 20 plus a confirmation d20 of IMPOSSIBLE_CONFIRM or higher (1 in 100 on a normal roll).
+  // A lucky success is plain success, never a critical-success breakthrough.
   const prohibited = !!cls.prohibited;
   const tier_before_cap = tier;
-  if (prohibited && TIERS.indexOf(tier) > TIERS.indexOf("failure")) tier = "failure"; // unlawful/unsafe acts AUTO-FAIL in code, regardless of the die
+  let confirm = null;
+  if (prohibited) {
+    if (nat === 20) {
+      const c = await d20(state.seed, idx, 2); // draw 2 is reserved for this confirm (0/1 are the action die)
+      confirm = { value: c.value, hash: c.hash };
+      tier = c.value >= IMPOSSIBLE_CONFIRM ? "success" : "failure";
+    } else if (TIERS.indexOf(tier) > TIERS.indexOf("failure")) {
+      tier = "failure";
+    }
+  }
   // Code-decided consequences (the narrator must render these)
   const effects = []; let clockDelta = 0; // Elapsed time follows the action itself (classifier estimate), not a fixed per-turn block: "immediately" stays ~1-2 min.
   const est = parseInt(cls.elapsed_minutes, 10);
@@ -122,7 +137,15 @@ export async function resolve(state, cls) {
     effects.push("Flawless execution: pristine result PLUS one concrete breakthrough (e.g., suspect OPSEC error, a clean correlating datum, exact fault isolated).");
     clockDelta = -1;
   }
-  if (prohibited) effects.push("This act is improper (unlawful, unsafe, against policy or against the rules of the activity). It FAILS: it does not produce the result sought (records are refused or must be suppressed, the substitution is disallowed, the supervisor stops it). Render one concrete realistic consequence (e.g. evidence suppressed/inadmissible, supervisor or official intervenes, write-up, injury, health-code violation, complaint). No partial success, no breakthrough, no data or benefit obtained from it." + (cls.rule_violated ? ` Rule violated: ${cls.rule_violated}.` : ""));
+  if (prohibited) {
+    const rule = cls.rule_violated ? ` Rule violated: ${cls.rule_violated}.` : "";
+    if (TIERS.indexOf(tier) > TIERS.indexOf("failure")) {
+      effects.length = 0;
+      effects.push("This act is improper (unlawful, unsafe, against policy or against the rules of the activity). Against the odds it produced the result sought, but it is not a professional success. Render the lucky result AND one concrete realistic consequence (complaint, write-up, evidence later challenged, damaged trust, supervisor review, injury narrowly avoided, health-code or legal exposure). Do not present this as the right approach, and do not add a breakthrough beyond the result sought." + rule);
+    } else {
+      effects.push("This act is improper (unlawful, unsafe, against policy or against the rules of the activity). It FAILS: it does not produce the result sought (records are refused or must be suppressed, the substitution is disallowed, the supervisor stops it). Render one concrete realistic consequence (e.g. evidence suppressed/inadmissible, supervisor or official intervenes, write-up, injury, health-code violation, complaint). No partial success, no breakthrough, no data or benefit obtained from it." + rule);
+    }
+  }
   // Trap mechanic: missing fundamentals bite now, silently recorded
   const bites = [];
   for (const id of missing) {
@@ -140,7 +163,7 @@ export async function resolve(state, cls) {
     ...(tgt ? { nuc: { id: tgt.sheet.id, name: tgt.sheet.name, trust: tgt.rel?.trust ?? 0, mood: tgt.rel?.mood ?? 0, dc_part: nucPart, advantage: nucAd.adv ? nucAd.why : null, disadvantage: nucAd.dis ? nucAd.why : null } } : {}),
     mode, draws: draws.map(d => d.value), draw_hashes: draws.map(d => d.hash), natural: nat,
     modifier: mod, mod_parts: { procedure: rp, framework: rf, specificity: rs, skill, prereq_penalty: prereqPenalty },
-    total, margin, mastery_floor: mastery, tier_before_floor, floor_applied, prohibited, rule_violated: cls.rule_violated || null, tier_before_cap, tier, effects, traps_triggered: bites,
+    total, margin, mastery_floor: mastery, tier_before_floor, floor_applied, prohibited, rule_violated: cls.rule_violated || null, tier_before_cap, confirm: confirm ? confirm.value : null, confirm_hash: confirm ? confirm.hash : null, tier, effects, traps_triggered: bites,
     friction_clock: state.friction_clock, sim_minutes: simMinutes
   };
   state.rolls.push(roll);
@@ -156,7 +179,7 @@ export function luckClass(r) {
   const sound = !r.prohibited && (mp.procedure | 0) >= 2 && (mp.specificity | 0) >= 2 && (mp.prereq_penalty | 0) === 0 && !(r.traps_triggered || []).length;
   const poor = !!r.prohibited || (mp.procedure | 0) <= 1 || (mp.specificity | 0) <= 1 || (mp.prereq_penalty | 0) < 0;
   if (sound && BAD.includes(r.tier)) return "bad_break";
-  if (poor && !r.prohibited && !BAD.includes(r.tier)) return "lucky";
+  if (poor && !BAD.includes(r.tier)) return "lucky"; // includes a lucky improper act: still poor judgment
   return null;
 }
 const DECISION_DOMAINS = ["technical", "critical"];

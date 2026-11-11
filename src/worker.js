@@ -189,9 +189,9 @@ export function frameworkNames(fund = []) {
 }
 
 function publicView(st, admin = false, bview = false) {
-  if (!admin) return { phase: st.phase, can_continue: st.phase === "play" && !(st.escalation > 0) && (st.continue_streak || 0) < MAX_CONTINUES, egregious: (st.egregious || []).length, ended_egregious: !!st.ended_egregious, turn: st.turn, profile: st.profile, title: st.scenario?.title, objective: st.scenario?.objective, sim_clock: simClock(st), sim_state: st.sim_state || {}, state_title: st.state_title || "State", compliance: st.scenario ? liveCompliance(st) : null,
+  if (!admin) return { phase: st.phase, can_continue: st.phase === "play" && !(st.escalation > 0) && (st.continue_streak || 0) < MAX_CONTINUES, egregious: egregiousLive(st), inspiration: !!st.inspiration, ended_egregious: !!st.ended_egregious, turn: st.turn, profile: st.profile, title: st.scenario?.title, objective: st.scenario?.objective, sim_clock: simClock(st), sim_state: st.sim_state || {}, state_title: st.state_title || "State", compliance: st.scenario ? liveCompliance(st) : null,
     transcript: st.transcript.filter(m => !m.admin && (!m.audit || st.phase === "ended" || (bview && st.builder))).map(({ roll, admin, ...m }) => m), images: st.images.map(i => ({ url: i.url })), artifacts: (st.artifacts || []).map(({ turn, ...a }) => a), final: st.final && { total: st.final.total, level: st.final.level, domains: st.final.domains, feedback: st.final.feedback, seed: st.final.seed, seed_commit: st.final.seed_commit }, ...(st.builder ? { builder: true, seed_commit: st.seed_commit, rolls: st.rolls.map(({ effects, validation, nuc, ...r }) => (st.phase === "ended" ? { ...r, nuc } : { ...r, dc_parts: (({ nuc, ...p }) => p)(r.dc_parts || {}) })) } : {}), cost: { calls: st.cost.calls, usd: st.cost.usd } };
-  const v = { phase: st.phase, can_continue: st.phase === "play" && !(st.escalation > 0) && (st.continue_streak || 0) < MAX_CONTINUES, egregious: (st.egregious || []).length, ended_egregious: !!st.ended_egregious, egregious_log: st.egregious || [], dev: st.dev, turn: st.turn, profile: st.profile, title: st.scenario?.title, objective: st.scenario?.objective, sim_clock: simClock(st), sim_state: st.sim_state || {}, state_title: st.state_title || "State", compliance: st.scenario ? liveCompliance(st) : null,
+  const v = { phase: st.phase, can_continue: st.phase === "play" && !(st.escalation > 0) && (st.continue_streak || 0) < MAX_CONTINUES, egregious: egregiousLive(st), inspiration: !!st.inspiration, ended_egregious: !!st.ended_egregious, egregious_log: st.egregious || [], dev: st.dev, turn: st.turn, profile: st.profile, title: st.scenario?.title, objective: st.scenario?.objective, sim_clock: simClock(st), sim_state: st.sim_state || {}, state_title: st.state_title || "State", compliance: st.scenario ? liveCompliance(st) : null,
     transcript: st.transcript, images: st.images, artifacts: st.artifacts || [], final: st.final, cost: st.cost };
   v.admin = true; v.seed_commit = st.seed_commit; v.rolls = st.rolls;
   if (st.dev) Object.assign(v, { rolls: st.rolls, grader: st.grader, traps: st.traps, satisfied: st.satisfied, fundamentals: st.fundamentals, friction_clock: st.friction_clock, seed_commit: st.seed_commit, escalation: st.escalation });
@@ -226,7 +226,7 @@ function scoreNotes(st, sc) {
     `**Missed (a required step was skipped before an action that depended on it):** ${missed.map(t => t.step).join("; ") || "none"}`,
     `**Skipped at first, done later (penalty reduced):** ${late.map(t => t.step).join("; ") || "none"}`,
     sc.short ? `**Not reached yet (the run ended before these; not counted as missed):** ${notPerf.map(f => f.step).join("; ") || "none"}` : `**Not performed (mission steps never done this session):** ${notPerf.map(f => f.step).join("; ") || "none"}`,
-    `**Rule violations (the improper action was stopped):** ${viol.map(r => r.rule_violated || r.action).join("; ") || "none"}`];
+    `**Rule violations (improper acts, whether or not they happened to work):** ${viol.map(r => r.rule_violated || r.action).join("; ") || "none"}`];
   if (sc.short) L.unshift(`*This run ended after ${sc.actions} consequential action${sc.actions === 1 ? "" : "s"}, so it is scored as an incomplete run: the points reflect only what you reached, not a verdict on your skill. Play through to the objective for a full rating.*`);
   if (omissions.length) L.push(`**Other omissions the grader noted:** ${omissions.join("; ")}`);
   { const lt = laterDoneFilter(st, true); if (lt.length) L.push(`**Noted as missing at the time, done later (not counted as missed):** ${lt.join("; ")}`); }
@@ -241,8 +241,8 @@ function firstSentence(t) { const s = String(t || "").split(/\n---\n/)[0].replac
 function luckReason(r) {
   const k = luckClass(r), mp = r.mod_parts || {}, good = !["critical_failure", "failure", "friction"].includes(r.tier);
   if (k === "bad_break") return "Tagged bad break: the approach was sound (procedure and specifics solid, no skipped step) and only circumstances went wrong.";
-  if (k === "lucky") return `Tagged lucky: it worked, but ${(mp.prereq_penalty | 0) < 0 ? "a required earlier step was skipped" : (mp.specificity | 0) <= 1 ? "it was too vague about who, what and how" : "it didn't follow the expected procedure"}.`;
-  if (r.prohibited) return "No tag: an improper act fails by rule, not by luck.";
+  if (k === "lucky") return r.prohibited ? "Tagged lucky: this improper act happened to work against the odds. It is still poor judgment, not the right approach." : `Tagged lucky: it worked, but ${(mp.prereq_penalty | 0) < 0 ? "a required earlier step was skipped" : (mp.specificity | 0) <= 1 ? "it was too vague about who, what and how" : "it didn't follow the expected procedure"}.`;
+  if (r.prohibited) return "No tag: this improper act failed the near-impossible check; the failure is on the decision, not luck.";
   if ((r.traps_triggered || []).length) return "No tag: the setback came from a skipped required step, so it reflects the decision, not luck.";
   if (good) return "No tag: a sound decision with a good result; there is nothing to separate.";
   return "No tag: the decision itself was weak (procedure or specifics), so the poor result is not counted as bad luck.";
@@ -256,6 +256,7 @@ function luckNotes(st, builder = false) {
     const act = String(r.action || "that step").replace(/\.$/, "");
     const tag = builder ? ` [${r.id}]` : "";
     if (k === "bad_break") out.bad.push(`- **${act}**${tag}: This was the right call. Unfortunately, circumstances didn't break your way: ${what} This did not count against your decision or technical scores.`);
+    else if (r.prohibited) out.lucky.push(`- **${act}**${tag}: It happened to work, but the act was improper (against policy, unsafe, or unlawful). That is poor judgment, not a success to repeat. It was graded as an improper act, not as the lucky result.`);
     else out.lucky.push(`- **${act}**${tag}: It worked this time, but the approach itself was shaky; ${(r.mod_parts?.prereq_penalty | 0) < 0 ? "a required earlier step was skipped" : (r.mod_parts?.specificity | 0) <= 1 ? "it was too vague about who, what and how" : "it didn't follow the expected procedure"}. On another day the same choice fails. It was graded as the decision it was, not as the result.`);
   }
   const L = [];
@@ -335,6 +336,7 @@ async function startScenario(env, st) {
   st.seed = crypto.randomUUID().replace(/-/g, ""); st.seed_commit = await commit(st.seed);
   st.climaxed = false; Object.assign(st, { phase: "play", omit_log: [], friction_clock: 0, momentum: 0, sim_minutes: 0, escalation: 0, rolls: [], traps: [], satisfied: [], grader: [], final: null, artifacts: [], _compPrev: undefined });
   st.egregious_total = (st.egregious_total || 0) + (st.egregious || []).length; st.egregious = []; st.ended_egregious = false; // warnings are per scenario; the lifetime total stays on the session for audit
+  st.inspiration = false; st.inspiration_earned = false; st.inspiration_grant = null; // Inspiration is per scenario (Markus 2026-11-10), same reset as NUC trust/mood
   st._compPrev = liveCompliance(st); // Muse #2: baseline before turn 1, so the first change shows its real delta
   say(st, "engine", `## ${st.scenario.title}\n*${st.scenario.setting}* — **${simClock(st)}**\n\n${st.scenario.briefing}\n\n**Objective:** ${st.scenario.objective}${stateLine(st)}`);
   say(st, "engine", `## Seed commitment\nRoll seed commitment (SHA-256): \`${st.seed_commit}\`. The seed is revealed in the debrief at \`.end\` so every roll can be re-derived.`, { audit: true });
@@ -397,7 +399,7 @@ async function finish(env, st, reason, P = () => {}) {
   // Seed reveal (separate from the debrief, which is unchanged): anyone can now re-derive every die.
   say(st, "engine", `## Grader vs tracker\n${trackerNote(st)}`, { audit: true });
   { const lb = luckNotes(st, true); say(st, "engine", `## Decision vs luck\n${lb || "No bad breaks or lucky saves."}${sc.luck_excluded?.length ? `\n\nLedger entries excluded as luck, not decision: ${sc.luck_excluded.join(", ")}` : ""}`, { audit: true }); }
-  say(st, "engine", `## Roll audit — seed revealed\nSeed: \`${st.seed}\`\nCommitment shown at start: \`${st.seed_commit}\` (SHA-256 of the seed)\n\n| Roll | Action | DC | d20 | Mod | Total | Result |\n|---|---|---|---|---|---|---|\n${st.rolls.map(r => `| ${r.id} | ${String(r.action || "").replace(/\|/g, "/").slice(0, 60)} | ${r.dc}${nucAudit(r)} | ${r.draws.join("/")} | ${r.modifier >= 0 ? "+" : ""}${r.modifier} | ${r.total} | ${r.tier.replace(/_/g, " ")}${r.floor_applied ? ` (mastery floor from ${r.tier_before_floor.replace(/_/g, " ")})` : ""}${r.prohibited ? " (improper act, capped)" : ""} |`).join("\n") || "| — | no consequential actions | | | | | |"}\n\nMastery floor: when procedure is 3, framework ≥2, specificity 3 and no prerequisite was skipped, a below-DC roll becomes Success; a natural 1 becomes Friction instead of Critical Failure.${st.rolls.some(r => r.nuc) ? " NUC part: when an action is aimed at a person, their authority, trust and mood add −2..+2 to the DC (the DC floor still holds); trust ≥ +2 gives advantage, trust ≤ −2 disadvantage." : ""}\n\nVerify every die yourself: [open the verifier](${ORIGIN}/verify?s=${st.id || ""}) (runs in your browser), or export the log and run \`node verify_rolls.mjs export.json\`.`, { audit: true });
+  say(st, "engine", `## Roll audit — seed revealed\nSeed: \`${st.seed}\`\nCommitment shown at start: \`${st.seed_commit}\` (SHA-256 of the seed)\n\n| Roll | Action | DC | d20 | Mod | Total | Result |\n|---|---|---|---|---|---|---|\n${st.rolls.map(r => `| ${r.id} | ${String(r.action || "").replace(/\|/g, "/").slice(0, 60)} | ${r.dc}${nucAudit(r)} | ${r.draws.join("/")} | ${r.modifier >= 0 ? "+" : ""}${r.modifier} | ${r.total} | ${r.tier.replace(/_/g, " ")}${r.floor_applied ? ` (mastery floor from ${r.tier_before_floor.replace(/_/g, " ")})` : ""}${r.prohibited ? (["success", "critical_success", "friction"].includes(r.tier) ? " (improper act, near-impossible success)" : " (improper act, near-impossible DC)") : ""} |`).join("\n") || "| — | no consequential actions | | | | | |"}\n\nMastery floor: when procedure is 3, framework ≥2, specificity 3 and no prerequisite was skipped, a below-DC roll becomes Success; a natural 1 becomes Friction instead of Critical Failure.${st.rolls.some(r => r.nuc) ? " NUC part: when an action is aimed at a person, their authority, trust and mood add −2..+2 to the DC (the DC floor still holds); trust ≥ +2 gives advantage, trust ≤ −2 disadvantage." : ""}\n\nVerify every die yourself: [open the verifier](${ORIGIN}/verify?s=${st.id || ""}) (runs in your browser), or export the log and run \`node verify_rolls.mjs export.json\`.`, { audit: true });
   say(st, "engine", `## Admin audit\n| Domain | Score | Computed from |\n|---|---|---|\n${rows}\n\nTraps: ${st.traps.map(t => `[${t.id}] ${t.step}${t.cured ? " (cured)" : ""}`).join("; ") || "none"}\n\nSeed ${st.seed} (commit ${st.seed_commit.slice(0, 16)}…), ${st.rolls.length} rolls, ${st.grader.length} grader entries.`, { admin: true });
 }
 
@@ -406,7 +408,8 @@ const CONTINUE_RE = /^\s*(continue|cont|next|go on|proceed|keep going|wait|ok(ay
 const passiveNote = st => ((st.continues || 0) >= 3 || st.continue_blocked) ? `\n\n**Passive play:** you advanced time with Continue ${st.continues || 0} time${st.continues === 1 ? "" : "s"}${st.continue_blocked ? ` and tried to skip ${st.continue_blocked} more time${st.continue_blocked === 1 ? "" : "s"} while the scene needed a decision` : ""}. Waiting lets problems grow; act on what you know.` : "";
 // Egregious conduct (2026-10-30): two in-scenario warnings, the third egregious action ends the scenario. Count lives only in server state.
 const EGREGIOUS_WARNINGS = 2;
-const egregiousList = st => (st.egregious || []).map(e => `${e.n}. **You:** "${String(e.input).replace(/\s+/g, " ").slice(0, 160)}"\n   - **Why it is egregious:** ${e.reason}\n   - **Correct approach:** ${e.correct}`).join("\n");
+const egregiousLive = st => (st.egregious || []).filter(e => !e.cleared_by).length;
+const egregiousList = st => (st.egregious || []).map(e => `${e.n}. **You:** "${String(e.input).replace(/\s+/g, " ").slice(0, 160)}"\n   - **Why it is egregious:** ${e.reason}\n   - **Correct approach:** ${e.correct}${e.cleared_by ? `\n   - **Cleared by Inspiration:** ${e.cleared_by}` : ""}`).join("\n");
 async function turn(env, st, input, P = () => {}, admin = false) {
   input = String(input || "").slice(0, 4000).trim();
   if (!input) return;
@@ -475,20 +478,27 @@ async function turn(env, st, input, P = () => {}, admin = false) {
   // Corrections / resends of work products always get a roll line (the classifier sometimes calls them non-consequential).
   const workProduct = !isContinue && (/\n\s*\|.*\|/.test(input) || input.split("\n").length >= 6 || /\b(correct(ed|ion)|revised|amended|resend|re-send|updated)\b/i.test(input));
   if (!isContinue && !cls.consequential && (cls.kind === "action" || workProduct)) { cls.consequential = true; cls.specific_enough = true; cls.difficulty ||= "routine"; }
-  if (cls.rule_violated && cls.consequential) cls.prohibited = true; // a broken state rule / law is an improper act: code caps it
+  if (cls.rule_violated && cls.consequential) cls.prohibited = true; // a broken state rule / law is an improper act: near-impossible DC
   if (cls.fundamentals_required_missing) cls.fundamentals_required_missing = cls.fundamentals_required_missing.filter(id => !st.satisfied.includes(id));
 
   let warnEgregious = null;
+  let inspApplied = null;
   if (!isContinue && cls.egregious === true) {
     st.egregious ||= [];
     const e = { n: st.egregious.length + 1, turn: st.turn, input: input.slice(0, 300), reason: scrub(String(cls.egregious_reason || "This action is unacceptable for this job.").slice(0, 300)), correct: scrub(String(cls.correct_approach || "Stop, follow your job's established procedure, and get a supervisor involved.").slice(0, 300)), ts: new Date().toISOString() };
     st.egregious.push(e);
-    if (e.n > EGREGIOUS_WARNINGS) { // third strike: no narration, no more turns; straight to the debrief
+    if (st.inspiration) { // banked Inspiration auto-clears this act as it happens; it is still recorded
+      e.cleared_by = (st.inspiration_grant && st.inspiration_grant.summary) || "Inspiration";
+      st.inspiration = false;
+      inspApplied = e;
+    } else if (egregiousLive(st) > EGREGIOUS_WARNINGS) { // third uncleared strike: no narration, no more turns; straight to the debrief
       st.ended_egregious = true;
-      say(st, "engine", `## 🛑 Scenario ended\n**That was your ${e.n === 3 ? "third" : e.n + "th"} egregiously wrong action.** ${e.reason}\n\nIn a real ${st.profile?.role || "workplace"} setting you would be removed from the situation right now, so the simulation stops here. No further turns are accepted in this scenario. Your debrief follows.`, { egregious: e.n, ended: true });
-      await finish(env, st, `scenario ended for egregious conduct (${e.n} egregious actions)`, P); return;
+      const live = egregiousLive(st);
+      say(st, "engine", `## 🛑 Scenario ended\n**That was your ${live === 3 ? "third" : live + "th"} egregiously wrong action.** ${e.reason}\n\nIn a real ${st.profile?.role || "workplace"} setting you would be removed from the situation right now, so the simulation stops here. No further turns are accepted in this scenario. Your debrief follows.`, { egregious: live, ended: true });
+      await finish(env, st, `scenario ended for egregious conduct (${live} egregious actions)`, P); return;
+    } else {
+      warnEgregious = e;
     }
-    warnEgregious = e;
   }
   if (isContinue) { st.continue_streak = (st.continue_streak || 0) + 1; st.continues = (st.continues || 0) + 1; } else st.continue_streak = 0;
   let outcome, roll = null;
@@ -541,7 +551,31 @@ async function turn(env, st, input, P = () => {}, admin = false) {
   if (n.narration) n.narration = localizeUTC(st, n.narration);
   say(st, "engine", n.narration + footer + (newArts.length ? "\n\n" + newArts.map(a => `📎 **${a.id} — ${a.title}** added to Files`).join("\n") : ""), roll ? { roll: roll.id } : {});
   if (roll) say(st, "engine", rollLine(roll), { audit: true, roll: roll.id }); // backstage only: builder/instructor view and the post-.end audit
-  if (warnEgregious) say(st, "system", `⚠️ **Warning ${warnEgregious.n} of ${EGREGIOUS_WARNINGS} — egregiously wrong action.** ${warnEgregious.reason}\n\n**Correct approach:** ${warnEgregious.correct}\n\n${warnEgregious.n >= EGREGIOUS_WARNINGS ? "**Final warning:** one more egregious action ends this scenario immediately." : "A third egregious action ends the scenario."}`, { egregious: warnEgregious.n });
+  if (warnEgregious) {
+    const live = egregiousLive(st);
+    say(st, "system", `⚠️ **Warning ${live} of ${EGREGIOUS_WARNINGS} — egregiously wrong action.** ${warnEgregious.reason}\n\n**Correct approach:** ${warnEgregious.correct}\n\n${live >= EGREGIOUS_WARNINGS ? "**Final warning:** one more egregious action ends this scenario immediately." : "A third egregious action ends the scenario."}`, { egregious: live });
+  }
+  if (inspApplied) say(st, "system", `✨ **Inspiration applied.** That egregious action was cleared as it happened. Egregious actions now ${egregiousLive(st)}/${EGREGIOUS_WARNINGS}.`, { inspiration: "applied", egregious: egregiousLive(st) });
+  // Inspiration (Markus 2026-11-10): rare, at most one per scenario, never merely correct play, never player-spent.
+  if (!isContinue && outcome.mode !== "escalation" && !st.inspiration_earned) {
+    const r = cls.rubric || {};
+    const high = (r.procedure | 0) === 3 && (r.framework | 0) >= 2 && (r.specificity | 0) === 3;
+    const clean = !cls.prohibited && cls.egregious !== true && cls.consequential && cls.specific_enough !== false && !(cls.fundamentals_required_missing || []).length;
+    if (high && clean && (cls.exceptional === true || g.exceptional === true)) {
+      const reason = scrub(String(cls.exceptional_reason || g.exceptional_reason || "That action was exceptionally appropriate and anticipated what was coming.").slice(0, 300));
+      const summary = scrub(String(cls.summary || input).slice(0, 160));
+      st.inspiration_earned = true;
+      st.inspiration_grant = { turn: st.turn, summary, reason, ts: new Date().toISOString() };
+      const uncleared = (st.egregious || []).find(e => !e.cleared_by);
+      if (uncleared) {
+        uncleared.cleared_by = summary;
+        st.inspiration = false;
+      } else {
+        st.inspiration = true;
+      }
+      say(st, "system", `✨ **Inspiration earned.** Egregious actions now ${egregiousLive(st)}/${EGREGIOUS_WARNINGS}.${st.inspiration ? " If a later action is egregious, it will be cleared automatically." : ""}`, { inspiration: st.inspiration ? "banked" : "cleared", egregious: egregiousLive(st) });
+    }
+  }
   const imgMode = st.settings?.images || "request";
   if (cls.image_request && (imgMode === "off" || imgMode === "opening")) { say(st, "system", "Images are turned off for this run (Settings → Images)."); cls.image_request = null; }
   if (!cls.image_request && imgMode === "frequent" && roll && st.phase === "play" && (st.actions || 0) % 4 === 0) cls.image_request = firstSentence(n.narration).slice(0, 200);
